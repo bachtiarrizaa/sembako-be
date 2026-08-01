@@ -47,7 +47,7 @@ func InitializeApp(cfg *config.Config) (*gin.Engine, error) {
 	)
 	authController := controller.NewAuthController(authUsecase, isProduction, refreshTTL)
 
-	userUsecase := usecase.NewUserUsecase(userRepo)
+	userUsecase := usecase.NewUserUsecase(userRepo, roleRepo)
 	userController := controller.NewUserController(userUsecase)
 
 	app := gin.Default()
