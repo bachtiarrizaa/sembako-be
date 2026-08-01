@@ -45,19 +45,13 @@ func (c *RoleController) Create(ctx *gin.Context) {
 }
 
 func (c *RoleController) GetAll(ctx *gin.Context) {
-	var pagReq model.PaginationRequest
-	if err := ctx.ShouldBindQuery(&pagReq); err != nil {
+	pagReq, err := utils.ParsePaginationQuery(ctx)
+	if err != nil {
 		utils.ErrorResponse(ctx, http.StatusBadRequest, "invalid query params")
 		return
 	}
-	if pagReq.Page < 1 {
-		pagReq.Page = 1
-	}
-	if pagReq.Limit < 1 {
-		pagReq.Limit = 10
-	}
 
-	res, pagination, err := c.usecase.GetAllRoles(ctx.Request.Context(), pagReq.Page, pagReq.Limit)
+	res, pagination, err := c.usecase.GetAllRoles(ctx.Request.Context(), pagReq)
 	if err != nil {
 		handleError(ctx, err)
 		return

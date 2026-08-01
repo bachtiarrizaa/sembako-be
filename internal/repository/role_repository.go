@@ -3,13 +3,15 @@ package repository
 import (
 	"context"
 
-	"github.com/bachtiarrizaa/sembako-be/internal/entity"
 	"gorm.io/gorm"
+
+	"github.com/bachtiarrizaa/sembako-be/internal/entity"
+	"github.com/bachtiarrizaa/sembako-be/internal/model"
 )
 
 type RoleRepository interface {
 	Create(ctx context.Context, role *entity.Role) error
-	FindAllPaginated(ctx context.Context, offset, limit int) ([]entity.Role, int64, error)
+	FindAllPaginated(ctx context.Context, req model.PaginationRequest) ([]entity.Role, int64, error)
 	FindByID(ctx context.Context, id string) (*entity.Role, error)
 	FindByName(ctx context.Context, name string) (*entity.Role, error)
 	Update(ctx context.Context, role *entity.Role) error
@@ -28,15 +30,22 @@ func (r *roleRepositoryImpl) Create(ctx context.Context, role *entity.Role) erro
 	return r.db.WithContext(ctx).Create(role).Error
 }
 
-func (r *roleRepositoryImpl) FindAllPaginated(ctx context.Context, offset, limit int) ([]entity.Role, int64, error) {
+func (r *roleRepositoryImpl) FindAllPaginated(ctx context.Context, req model.PaginationRequest) ([]entity.Role, int64, error) {
 	var roles []entity.Role
 	var total int64
 
-	if err := r.db.WithContext(ctx).Model(&entity.Role{}).Count(&total).Error; err != nil {
+	query := r.db.WithContext(ctx).Model(&entity.Role{})
+
+	if req.Search != "" {
+		query = query.Where("name ILIKE ?", "%"+req.Search+"%")
+	}
+
+	if err := query.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 
-	if err := r.db.WithContext(ctx).Offset(offset).Limit(limit).Find(&roles).Error; err != nil {
+	offset := (req.Page - 1) * req.Limit
+	if err := query.Offset(offset).Limit(req.Limit).Find(&roles).Error; err != nil {
 		return nil, 0, err
 	}
 

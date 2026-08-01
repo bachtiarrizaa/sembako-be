@@ -5,6 +5,8 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+
+	"github.com/bachtiarrizaa/sembako-be/internal/pkg/errs"
 )
 
 type Pagination struct {
@@ -53,4 +55,9 @@ func ErrorResponse(c *gin.Context, statusCode int, message string) {
 		Message: message,
 		Data:    nil,
 	})
+}
+
+func HandleError(c *gin.Context, err error) {
+	appErr := errs.ToAppError(err)
+	ErrorResponse(c, appErr.Code, appErr.Message)
 }

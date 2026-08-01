@@ -23,6 +23,21 @@ func NewBadRequest(message string) *AppError {
 	return &AppError{Code: http.StatusBadRequest, Message: message}
 }
 
+func NewUnauthorized(message string) *AppError {
+	return &AppError{Code: http.StatusUnauthorized, Message: message}
+}
+
+func NewForbidden(message string) *AppError {
+	return &AppError{Code: http.StatusForbidden, Message: message}
+}
+
 func NewInternal(message string) *AppError {
 	return &AppError{Code: http.StatusInternalServerError, Message: message}
+}
+
+func ToAppError(err error) *AppError {
+	if appErr, ok := err.(*AppError); ok {
+		return appErr
+	}
+	return NewInternal("internal server error")
 }

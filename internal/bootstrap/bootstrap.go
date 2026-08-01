@@ -1,6 +1,9 @@
 package bootstrap
 
 import (
+	"fmt"
+	"time"
+
 	"github.com/gin-gonic/gin"
 
 	"github.com/bachtiarrizaa/sembako-be/internal/config"
@@ -11,17 +14,44 @@ import (
 )
 
 func InitializeApp(cfg *config.Config) (*gin.Engine, error) {
+	if cfg.JWTAccessSecret == "" {
+		return nil, fmt.Errorf("JWT_ACCESS_SECRET must not be empty")
+	}
+	if cfg.JWTRefreshSecret == "" {
+		return nil, fmt.Errorf("JWT_REFRESH_SECRET must not be empty")
+	}
+
 	db, err := config.NewDatabase(cfg)
 	if err != nil {
 		return nil, err
 	}
 
+	refreshTTL := time.Duration(cfg.JWTRefreshExpireDays) * 24 * time.Hour
+	isProduction := cfg.AppEnv == "production"
+
 	roleRepo := repository.NewRoleRepository(db)
 	roleUsecase := usecase.NewRoleUsecase(roleRepo)
 	roleController := controller.NewRoleController(roleUsecase)
 
+	userRepo := repository.NewUserRepository(db)
+	refreshTokenRepo := repository.NewRefreshTokenRepository(db)
+	blacklistRepo := repository.NewBlacklistRepository(db)
+
+	authUsecase := usecase.NewAuthUsecase(
+		userRepo,
+		refreshTokenRepo,
+		blacklistRepo,
+		cfg.JWTAccessSecret,
+		time.Duration(cfg.JWTAccessExpireMinutes)*time.Minute,
+		refreshTTL,
+	)
+	authController := controller.NewAuthController(authUsecase, isProduction, refreshTTL)
+
+	userUsecase := usecase.NewUserUsecase(userRepo)
+	userController := controller.NewUserController(userUsecase)
+
 	app := gin.Default()
-	router.Setup(app, roleController)
+	router.Setup(app, cfg.JWTAccessSecret, blacklistRepo, roleController, authController, userController)
 
 	return app, nil
 }
