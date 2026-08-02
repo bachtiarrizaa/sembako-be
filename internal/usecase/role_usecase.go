@@ -62,7 +62,7 @@ func (u *RoleUsecase) GetRoleByID(ctx context.Context, id string) (*model.RoleRe
 }
 
 func (u *RoleUsecase) UpdateRole(ctx context.Context, id string, req model.UpdateRoleRequest) (*model.RoleResponse, error) {
-	_, err := u.repo.FindByID(ctx, id)
+	role, err := u.repo.FindByID(ctx, id)
 	if err != nil {
 		return nil, errs.NewNotFound("role not found")
 	}
@@ -72,10 +72,7 @@ func (u *RoleUsecase) UpdateRole(ctx context.Context, id string, req model.Updat
 		return nil, errs.NewConflict("role name already exists")
 	}
 
-	role := &entity.Role{
-		ID:   id,
-		Name: req.Name,
-	}
+	role.Name = req.Name
 	if err := u.repo.Update(ctx, role); err != nil {
 		return nil, errs.NewInternal("failed to update role")
 	}

@@ -62,7 +62,7 @@ func (u *CategoryUsecase) GetCategoryById(ctx context.Context, id string) (*mode
 }
 
 func (u *CategoryUsecase) UpdateCategory(ctx context.Context, id string, req model.UpdateCategoryRequest) (*model.CategoryResponse, error) {
-	_, err := u.repo.FindById(ctx, id)
+	category, err := u.repo.FindById(ctx, id)
 	if err != nil {
 		return nil, errs.NewNotFound("category not found")
 	}
@@ -72,10 +72,7 @@ func (u *CategoryUsecase) UpdateCategory(ctx context.Context, id string, req mod
 		return nil, errs.NewConflict("category name already exist")
 	}
 
-	category := &entity.Category{
-		ID:   id,
-		Name: req.Name,
-	}
+	category.Name = req.Name
 	if err := u.repo.Update(ctx, category); err != nil {
 		return nil, errs.NewInternal("failed to update category")
 	}
