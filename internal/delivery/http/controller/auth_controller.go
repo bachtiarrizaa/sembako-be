@@ -38,7 +38,7 @@ func (ctrl *AuthController) Login(c *gin.Context) {
 		return
 	}
 	if err := ctrl.validator.Struct(req); err != nil {
-		utils.ErrorResponse(c, http.StatusUnprocessableEntity, err.Error())
+		utils.ErrorResponse(c, http.StatusUnprocessableEntity, utils.FormatValidationError(err))
 		return
 	}
 

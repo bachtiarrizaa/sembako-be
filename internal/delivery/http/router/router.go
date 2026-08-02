@@ -37,5 +37,10 @@ func Setup(
 	users := api.Group("/users", middleware.AuthMiddleware(jwtSecret, blacklistRepo))
 	{
 		users.GET("/me", userController.GetMe)
+		users.POST("", userController.Create)
+		users.GET("", userController.GetAll)
+		users.GET("/:id", userController.GetByID)
+		users.PUT("/:id", userController.Update)
+		users.DELETE("/:id", userController.Delete)
 	}
 }

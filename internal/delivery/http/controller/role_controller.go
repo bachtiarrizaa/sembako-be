@@ -32,7 +32,7 @@ func (c *RoleController) Create(ctx *gin.Context) {
 		return
 	}
 	if err := c.validator.Struct(req); err != nil {
-		utils.ErrorResponse(ctx, http.StatusUnprocessableEntity, err.Error())
+		utils.ErrorResponse(ctx, http.StatusUnprocessableEntity, utils.FormatValidationError(err))
 		return
 	}
 
@@ -87,7 +87,7 @@ func (c *RoleController) Update(ctx *gin.Context) {
 		return
 	}
 	if err := c.validator.Struct(req); err != nil {
-		utils.ErrorResponse(ctx, http.StatusUnprocessableEntity, err.Error())
+		utils.ErrorResponse(ctx, http.StatusUnprocessableEntity, utils.FormatValidationError(err))
 		return
 	}
 
