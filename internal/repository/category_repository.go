@@ -6,7 +6,6 @@ import (
 	"github.com/bachtiarrizaa/sembako-be/internal/entity"
 	"github.com/bachtiarrizaa/sembako-be/internal/model"
 
-	// "github.com/bachtiarrizaa/sembako-be/internal/model"
 	"gorm.io/gorm"
 )
 
