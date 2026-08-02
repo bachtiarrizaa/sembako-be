@@ -12,6 +12,7 @@ type RefreshTokenRepository interface {
 	Create(ctx context.Context, token *entity.RefreshToken) error
 	FindByTokenHash(ctx context.Context, hash string) (*entity.RefreshToken, error)
 	DeleteByUserID(ctx context.Context, userID string) error
+	DeleteByTokenHash(ctx context.Context, hash string) error
 }
 
 type refreshTokenRepository struct {
@@ -37,4 +38,8 @@ func (r *refreshTokenRepository) FindByTokenHash(ctx context.Context, hash strin
 
 func (r *refreshTokenRepository) DeleteByUserID(ctx context.Context, userID string) error {
 	return r.db.WithContext(ctx).Where("user_id = ?", userID).Delete(&entity.RefreshToken{}).Error
+}
+
+func (r *refreshTokenRepository) DeleteByTokenHash(ctx context.Context, hash string) error {
+	return r.db.WithContext(ctx).Where("token_hash = ?", hash).Delete(&entity.RefreshToken{}).Error
 }
