@@ -58,6 +58,10 @@ func InitializeApp(cfg *config.Config) (*gin.Engine, error) {
 	supplierUsecase := usecase.NewSupplierUsecase(supplierRepo)
 	supplierController := controller.NewSupplierController(supplierUsecase)
 
+	unitRepo := repository.NewUnitRepository(db)
+	unitUsecase := usecase.NewUnitUsecase(unitRepo)
+	unitController := controller.NewUnitController(unitUsecase)
+
 	app := gin.Default()
 	router.Setup(
 		app,
@@ -68,6 +72,7 @@ func InitializeApp(cfg *config.Config) (*gin.Engine, error) {
 		userController,
 		categoryController,
 		supplierController,
+		unitController,
 	)
 
 	return app, nil
