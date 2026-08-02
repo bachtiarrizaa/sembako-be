@@ -42,7 +42,6 @@ func NewAuthUsecase(
 	}
 }
 
-// LoginResult membungkus response login beserta raw refresh token untuk diserahkan ke cookie.
 type LoginResult struct {
 	Response     *model.LoginResponse
 	RefreshToken string
@@ -128,8 +127,7 @@ func (uc *AuthUsecase) Refresh(ctx context.Context, rawToken string) (*model.Ref
 		return nil, "", errs.NewInternal("invalid user id format")
 	}
 
-	// Hapus token lama (token rotation — cegah replay attack)
-	if err := uc.refreshTokenRepo.DeleteByUserID(ctx, record.UserID); err != nil {
+	if err := uc.refreshTokenRepo.DeleteByTokenHash(ctx, tokenHash); err != nil {
 		return nil, "", errs.NewInternal("failed to rotate refresh token")
 	}
 
@@ -156,19 +154,14 @@ func (uc *AuthUsecase) Refresh(ctx context.Context, rawToken string) (*model.Ref
 }
 
 func (uc *AuthUsecase) Logout(ctx context.Context, userID uuid.UUID, accessToken string) error {
-	// 1. Hapus refresh token dari DB
 	if err := uc.refreshTokenRepo.DeleteByUserID(ctx, userID.String()); err != nil {
 		return errs.NewInternal("failed to revoke session")
 	}
-
-	// 2. Parse access token untuk dapat waktu kedaluwarsanya
 	claims, err := utils.ParseAccessToken(accessToken, uc.jwtAccessSecret)
 	if err != nil {
-		// Jika token sudah expired / invalid, tidak perlu blacklist
 		return nil
 	}
 
-	// 3. Masukkan ke blacklist dengan expiration time token tersebut
 	tokenHash := utils.HashRefreshToken(accessToken)
 	if err := uc.blacklistRepo.Blacklist(ctx, tokenHash, claims.ExpiresAt.Time); err != nil {
 		return errs.NewInternal("failed to blacklist token")
