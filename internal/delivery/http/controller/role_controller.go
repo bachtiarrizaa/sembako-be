@@ -1,14 +1,12 @@
 package controller
 
 import (
-	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
 
 	"github.com/bachtiarrizaa/sembako-be/internal/model"
-	"github.com/bachtiarrizaa/sembako-be/internal/pkg/errs"
 	"github.com/bachtiarrizaa/sembako-be/internal/pkg/utils"
 	"github.com/bachtiarrizaa/sembako-be/internal/usecase"
 )
@@ -111,13 +109,4 @@ func (c *RoleController) Delete(ctx *gin.Context) {
 		return
 	}
 	utils.SuccessResponse(ctx, http.StatusOK, "role deleted successfully", nil)
-}
-
-func handleError(ctx *gin.Context, err error) {
-	var appErr *errs.AppError
-	if errors.As(err, &appErr) {
-		utils.ErrorResponse(ctx, appErr.Code, appErr.Message)
-		return
-	}
-	utils.ErrorResponse(ctx, http.StatusInternalServerError, "internal server error")
 }
