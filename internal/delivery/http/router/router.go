@@ -15,6 +15,7 @@ func Setup(
 	roleController *controller.RoleController,
 	authController *controller.AuthController,
 	userController *controller.UserController,
+	categoryController *controller.CategoryController,
 ) {
 	api := router.Group("/api")
 
@@ -42,5 +43,14 @@ func Setup(
 		users.GET("/:id", userController.GetByID)
 		users.PUT("/:id", userController.Update)
 		users.DELETE("/:id", userController.Delete)
+	}
+
+	categories := api.Group("/categories", middleware.AuthMiddleware(jwtSecret, blacklistRepo))
+	{
+		categories.POST("", categoryController.Create)
+		categories.GET("", categoryController.GetCategories)
+		categories.GET("/:id", categoryController.GetCategoryById)
+		categories.PUT("/:id", categoryController.UpdateCategory)
+		categories.DELETE("/:id", categoryController.DeleteCategory)
 	}
 }

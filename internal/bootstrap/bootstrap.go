@@ -50,8 +50,20 @@ func InitializeApp(cfg *config.Config) (*gin.Engine, error) {
 	userUsecase := usecase.NewUserUsecase(userRepo, roleRepo)
 	userController := controller.NewUserController(userUsecase)
 
+	categoryRepo := repository.NewCategoryRepository(db)
+	categoryUsecase := usecase.NewCategoryUsecase(categoryRepo)
+	categoryController := controller.NewCategoryController(categoryUsecase)
+
 	app := gin.Default()
-	router.Setup(app, cfg.JWTAccessSecret, blacklistRepo, roleController, authController, userController)
+	router.Setup(
+		app,
+		cfg.JWTAccessSecret,
+		blacklistRepo,
+		roleController,
+		authController,
+		userController,
+		categoryController,
+	)
 
 	return app, nil
 }
