@@ -49,7 +49,7 @@ func (ctrl *UserController) Create(c *gin.Context) {
 	}
 
 	if err := ctrl.validator.Struct(req); err != nil {
-		utils.ErrorResponse(c, http.StatusUnprocessableEntity, err.Error())
+		utils.ErrorResponse(c, http.StatusUnprocessableEntity, utils.FormatValidationError(err))
 		return
 	}
 
@@ -110,7 +110,7 @@ func (ctrl *UserController) Update(c *gin.Context) {
 	}
 
 	if err := ctrl.validator.Struct(req); err != nil {
-		utils.ErrorResponse(c, http.StatusUnprocessableEntity, err.Error())
+		utils.ErrorResponse(c, http.StatusUnprocessableEntity, utils.FormatValidationError(err))
 		return
 	}
 

@@ -37,6 +37,7 @@ type UserResponse struct {
 	Role      UserWithRole `json:"role"`
 	IsActive  bool         `json:"isActive"`
 	CreatedAt time.Time    `json:"createdAt"`
+	UpdatedAt time.Time    `json:"updatedAt"`
 }
 
 func ToUserResponse(u *entity.User) UserResponse {
@@ -51,5 +52,6 @@ func ToUserResponse(u *entity.User) UserResponse {
 		},
 		IsActive:  u.IsActive,
 		CreatedAt: u.CreatedAt,
+		UpdatedAt: u.UpdatedAt,
 	}
 }

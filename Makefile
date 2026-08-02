@@ -6,6 +6,9 @@ MIGRATE_DSN=postgres://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME
 run:
 	go run cmd/api/main.go
 
+dev:
+	air
+
 tidy:
 	go mod tidy
 
