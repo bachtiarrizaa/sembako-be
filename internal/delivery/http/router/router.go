@@ -16,6 +16,7 @@ func Setup(
 	authController *controller.AuthController,
 	userController *controller.UserController,
 	categoryController *controller.CategoryController,
+	supplierController *controller.SupplierController,
 ) {
 	api := router.Group("/api")
 
@@ -52,5 +53,15 @@ func Setup(
 		categories.GET("/:id", categoryController.GetCategoryById)
 		categories.PUT("/:id", categoryController.UpdateCategory)
 		categories.DELETE("/:id", categoryController.DeleteCategory)
+	}
+
+	supplier := api.Group("/suppliers", middleware.AuthMiddleware(jwtSecret, blacklistRepo))
+	{
+		supplier.POST("", supplierController.Create)
+		supplier.GET("", supplierController.GetSuppliers)
+		supplier.GET("/:id", supplierController.GetSupplierById)
+		supplier.PUT("/:id", supplierController.Update)
+		supplier.PATCH("/:id/status", supplierController.UpdateStatus)
+		supplier.DELETE("/:id", supplierController.Delete)
 	}
 }

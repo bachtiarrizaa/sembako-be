@@ -4,6 +4,7 @@ CREATE TABLE IF NOT EXISTS suppliers (
     contact_name   VARCHAR(100),
     phone          VARCHAR(20),
     address        TEXT,
+    is_active      BOOLEAN NOT NULL DEFAULT TRUE,
     created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
