@@ -18,6 +18,7 @@ func Setup(
 	categoryController *controller.CategoryController,
 	supplierController *controller.SupplierController,
 	unitController *controller.UnitController,
+	customerController *controller.CustomerController,
 ) {
 	api := router.Group("/api")
 
@@ -73,5 +74,15 @@ func Setup(
 		unit.GET("/:id", unitController.GetByID)
 		unit.PUT("/:id", unitController.Update)
 		unit.DELETE("/:id", unitController.Delete)
+	}
+
+	customer := api.Group("/customers", middleware.AuthMiddleware(jwtSecret, blacklistRepo))
+	{
+		customer.POST("", customerController.Create)
+		customer.GET("", customerController.GetAll)
+		customer.GET("/:id", customerController.GetById)
+		customer.PUT("/:id", customerController.Update)
+		customer.PUT("/:id/status", customerController.UpdateStatus)
+		customer.DELETE("/:id", customerController.Delete)
 	}
 }
