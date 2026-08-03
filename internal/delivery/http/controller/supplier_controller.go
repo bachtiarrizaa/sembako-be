@@ -22,7 +22,7 @@ func NewSupplierController(usecase *usecase.SupplierUsecase) *SupplierController
 	}
 }
 
-func (c *SupplierController) Create(ctx *gin.Context) {
+func (c *SupplierController) CreateSupplier(ctx *gin.Context) {
 	var req model.CreateSupplierRequest
 	if err := ctx.ShouldBindBodyWithJSON(&req); err != nil {
 		utils.ErrorResponse(ctx, http.StatusBadRequest, "invalid request body")
@@ -33,7 +33,7 @@ func (c *SupplierController) Create(ctx *gin.Context) {
 		return
 	}
 
-	res, err := c.usecase.Create(ctx.Request.Context(), req)
+	res, err := c.usecase.CreateSupplier(ctx.Request.Context(), req)
 	if err != nil {
 		handleError(ctx, err)
 		return
@@ -41,14 +41,14 @@ func (c *SupplierController) Create(ctx *gin.Context) {
 	utils.SuccessResponse(ctx, http.StatusCreated, "supplier created successfully", res)
 }
 
-func (c *SupplierController) GetSuppliers(ctx *gin.Context) {
+func (c *SupplierController) GetSuppliersWithPagination(ctx *gin.Context) {
 	pageReq, err := utils.ParsePaginationQuery(ctx)
 	if err != nil {
 		utils.ErrorResponse(ctx, http.StatusBadRequest, "invalid query params")
 		return
 	}
 
-	res, pagination, err := c.usecase.GetSuppliers(ctx.Copy().Request.Context(), pageReq)
+	res, pagination, err := c.usecase.GetSuppliersWithPagination(ctx.Copy().Request.Context(), pageReq)
 	if err != nil {
 		handleError(ctx, err)
 		return
@@ -72,7 +72,7 @@ func (c *SupplierController) GetSupplierById(ctx *gin.Context) {
 	utils.SuccessResponse(ctx, http.StatusOK, "supplier fetched successfully", res)
 }
 
-func (c *SupplierController) Update(ctx *gin.Context) {
+func (c *SupplierController) UpdateSupplier(ctx *gin.Context) {
 	id := ctx.Param("id")
 	if id == "" {
 		utils.ErrorResponse(ctx, http.StatusBadRequest, "invalid id")
@@ -89,7 +89,7 @@ func (c *SupplierController) Update(ctx *gin.Context) {
 		return
 	}
 
-	res, err := c.usecase.Update(ctx.Request.Context(), id, req)
+	res, err := c.usecase.UpdateSupplier(ctx.Request.Context(), id, req)
 	if err != nil {
 		handleError(ctx, err)
 		return
@@ -122,14 +122,14 @@ func (c *SupplierController) UpdateStatus(ctx *gin.Context) {
 	utils.SuccessResponse(ctx, http.StatusOK, "supplier status updated successfully", res)
 }
 
-func (c *SupplierController) Delete(ctx *gin.Context) {
+func (c *SupplierController) DeleteSupplier(ctx *gin.Context) {
 	id := ctx.Param("id")
 	if id == "" {
 		utils.ErrorResponse(ctx, http.StatusBadRequest, "invalid id")
 		return
 	}
 
-	if err := c.usecase.Delete(ctx.Request.Context(), id); err != nil {
+	if err := c.usecase.DeleteSupplier(ctx.Request.Context(), id); err != nil {
 		handleError(ctx, err)
 		return
 	}

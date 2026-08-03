@@ -37,7 +37,7 @@ func (u *CategoryUsecase) CreateCategory(ctx context.Context, req model.CreateCa
 	return toCategoryResponse(category), nil
 }
 
-func (u *CategoryUsecase) GetCategories(ctx context.Context, req model.PaginationRequest) ([]model.CategoryResponse, utils.Pagination, error) {
+func (u *CategoryUsecase) GetCategoriesWithPagination(ctx context.Context, req model.PaginationRequest) ([]model.CategoryResponse, utils.Pagination, error) {
 	categories, total, err := u.repo.FindCategories(ctx, req)
 	if err != nil {
 		return nil, utils.Pagination{}, errs.NewInternal("failed to fetch categories")

@@ -69,8 +69,8 @@ func (uc *UserUsecase) CreateUser(ctx context.Context, req model.CreateUserReque
 	return &resp, nil
 }
 
-func (uc *UserUsecase) GetAllUsers(ctx context.Context, req model.PaginationRequest) ([]model.UserResponse, utils.Pagination, error) {
-	users, total, err := uc.userRepo.FindAllPaginated(ctx, req)
+func (uc *UserUsecase) GetUsersWithPagination(ctx context.Context, req model.PaginationRequest) ([]model.UserResponse, utils.Pagination, error) {
+	users, total, err := uc.userRepo.FindUsers(ctx, req)
 	if err != nil {
 		return nil, utils.Pagination{}, errs.NewInternal("failed to fetch users")
 	}
@@ -117,7 +117,6 @@ func (uc *UserUsecase) UpdateUser(ctx context.Context, id uuid.UUID, req model.U
 		return nil, errs.NewInternal("failed to fetch user data")
 	}
 
-	// 1. Check if role exists
 	_, err = uc.roleRepo.FindByID(ctx, req.RoleID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -126,7 +125,6 @@ func (uc *UserUsecase) UpdateUser(ctx context.Context, id uuid.UUID, req model.U
 		return nil, errs.NewInternal("failed to fetch role data")
 	}
 
-	// 2. Check if email is unique (if changed)
 	if req.Email != user.Email {
 		existingEmail, err := uc.userRepo.FindByEmail(ctx, req.Email)
 		if err == nil && existingEmail != nil {
@@ -134,7 +132,6 @@ func (uc *UserUsecase) UpdateUser(ctx context.Context, id uuid.UUID, req model.U
 		}
 	}
 
-	// 3. Check if username is unique (if changed)
 	if req.Username != nil && *req.Username != "" {
 		if user.Username == nil || *req.Username != *user.Username {
 			existingUsername, err := uc.userRepo.FindByUsername(ctx, *req.Username)
@@ -150,7 +147,6 @@ func (uc *UserUsecase) UpdateUser(ctx context.Context, id uuid.UUID, req model.U
 	user.RoleID = req.RoleID
 	user.IsActive = *req.IsActive
 
-	// 4. Update password if provided
 	if req.Password != nil && *req.Password != "" {
 		hashedPassword, err := utils.HashPassword(*req.Password)
 		if err != nil {

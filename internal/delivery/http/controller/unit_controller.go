@@ -23,7 +23,7 @@ func NewUnitController(usecase *usecase.Unitusecase) *UnitController {
 	}
 }
 
-func (c *UnitController) Create(ctx *gin.Context) {
+func (c *UnitController) CreateUnit(ctx *gin.Context) {
 	var req model.CreateUnitRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		utils.ErrorResponse(ctx, http.StatusBadRequest, "invalid request body")
@@ -34,7 +34,7 @@ func (c *UnitController) Create(ctx *gin.Context) {
 		return
 	}
 
-	res, err := c.usecase.Create(ctx.Request.Context(), req)
+	res, err := c.usecase.CreateUnit(ctx.Request.Context(), req)
 	if err != nil {
 		handleError(ctx, err)
 		return
@@ -57,14 +57,14 @@ func (c *UnitController) GetUnitsWithPagination(ctx *gin.Context) {
 	utils.SuccessResponseWithPagination(ctx, http.StatusOK, "units fetched successfully", res, pagination)
 }
 
-func (c *UnitController) GetByID(ctx *gin.Context) {
+func (c *UnitController) GetUnitByID(ctx *gin.Context) {
 	id := ctx.Param("id")
 	if id == "" {
 		utils.ErrorResponse(ctx, http.StatusBadRequest, "invalid id")
 		return
 	}
 
-	res, err := c.usecase.GetUnityID(ctx.Request.Context(), id)
+	res, err := c.usecase.GetUnitByID(ctx.Request.Context(), id)
 	if err != nil {
 		handleError(ctx, err)
 		return
@@ -72,7 +72,7 @@ func (c *UnitController) GetByID(ctx *gin.Context) {
 	utils.SuccessResponse(ctx, http.StatusOK, "unit fetched successfully", res)
 }
 
-func (c *UnitController) Update(ctx *gin.Context) {
+func (c *UnitController) UpdateUnit(ctx *gin.Context) {
 	id := ctx.Param("id")
 	if id == "" {
 		utils.ErrorResponse(ctx, http.StatusBadRequest, "invalid id")
@@ -89,7 +89,7 @@ func (c *UnitController) Update(ctx *gin.Context) {
 		return
 	}
 
-	res, err := c.usecase.Update(ctx.Request.Context(), id, req)
+	res, err := c.usecase.UpdateUnit(ctx.Request.Context(), id, req)
 	if err != nil {
 		handleError(ctx, err)
 		return
@@ -97,14 +97,14 @@ func (c *UnitController) Update(ctx *gin.Context) {
 	utils.SuccessResponse(ctx, http.StatusOK, "unit updated successfully", res)
 }
 
-func (c *UnitController) Delete(ctx *gin.Context) {
+func (c *UnitController) DeleteUnit(ctx *gin.Context) {
 	id := ctx.Param("id")
 	if id == "" {
 		utils.ErrorResponse(ctx, http.StatusBadRequest, "invalid id")
 		return
 	}
 
-	if err := c.usecase.Delete(ctx.Request.Context(), id); err != nil {
+	if err := c.usecase.DeleteUnit(ctx.Request.Context(), id); err != nil {
 		handleError(ctx, err)
 		return
 	}

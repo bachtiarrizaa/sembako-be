@@ -21,7 +21,7 @@ func NewUnitUsecase(repo repository.UnitRepository) *Unitusecase {
 	return &Unitusecase{repo: repo}
 }
 
-func (u *Unitusecase) Create(ctx context.Context, req model.CreateUnitRequest) (*model.UnitResponse, error) {
+func (u *Unitusecase) CreateUnit(ctx context.Context, req model.CreateUnitRequest) (*model.UnitResponse, error) {
 	existing, err := u.repo.FindByName(ctx, req.Name)
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, errs.NewInternal("failed to check existing unit")
@@ -53,7 +53,7 @@ func (u *Unitusecase) GetUnitsWithPagination(ctx context.Context, req model.Pagi
 	return res, pagination, nil
 }
 
-func (u *Unitusecase) GetUnityID(ctx context.Context, id string) (*model.UnitResponse, error) {
+func (u *Unitusecase) GetUnitByID(ctx context.Context, id string) (*model.UnitResponse, error) {
 	unit, err := u.repo.FindByID(ctx, id)
 	if err != nil {
 		return nil, errs.NewNotFound("unit not found")
@@ -61,7 +61,7 @@ func (u *Unitusecase) GetUnityID(ctx context.Context, id string) (*model.UnitRes
 	return toUnitResponse(unit), nil
 }
 
-func (u *Unitusecase) Update(ctx context.Context, id string, req model.UpdateUnitRequest) (*model.UnitResponse, error) {
+func (u *Unitusecase) UpdateUnit(ctx context.Context, id string, req model.UpdateUnitRequest) (*model.UnitResponse, error) {
 	unit, err := u.repo.FindByID(ctx, id)
 	if err != nil {
 		return nil, errs.NewNotFound("unit not found")
@@ -79,7 +79,7 @@ func (u *Unitusecase) Update(ctx context.Context, id string, req model.UpdateUni
 	return toUnitResponse(unit), nil
 }
 
-func (u *Unitusecase) Delete(ctx context.Context, id string) error {
+func (u *Unitusecase) DeleteUnit(ctx context.Context, id string) error {
 	_, err := u.repo.FindByID(ctx, id)
 	if err != nil {
 		return errs.NewNotFound("unit not found")

@@ -17,7 +17,7 @@ type UserRepository interface {
 	Create(ctx context.Context, user *entity.User) error
 	Update(ctx context.Context, user *entity.User) error
 	Delete(ctx context.Context, id uuid.UUID) error
-	FindAllPaginated(ctx context.Context, req model.PaginationRequest) ([]entity.User, int64, error)
+	FindUsers(ctx context.Context, req model.PaginationRequest) ([]entity.User, int64, error)
 }
 
 type userRepository struct {
@@ -73,7 +73,7 @@ func (r *userRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	return r.db.WithContext(ctx).Delete(&entity.User{}, "id = ?", id).Error
 }
 
-func (r *userRepository) FindAllPaginated(ctx context.Context, req model.PaginationRequest) ([]entity.User, int64, error) {
+func (r *userRepository) FindUsers(ctx context.Context, req model.PaginationRequest) ([]entity.User, int64, error) {
 	var users []entity.User
 	var total int64
 

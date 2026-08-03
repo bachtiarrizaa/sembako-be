@@ -24,7 +24,7 @@ func NewCategoryController(usecase *usecase.CategoryUsecase) *CategoryController
 	}
 }
 
-func (c *CategoryController) Create(ctx *gin.Context) {
+func (c *CategoryController) CreateCategory(ctx *gin.Context) {
 	var req model.CreateCategoryRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		utils.ErrorResponse(ctx, http.StatusBadRequest, "invalid request body")
@@ -43,14 +43,14 @@ func (c *CategoryController) Create(ctx *gin.Context) {
 	utils.SuccessResponse(ctx, http.StatusCreated, "category created successfully", res)
 }
 
-func (c *CategoryController) GetCategories(ctx *gin.Context) {
+func (c *CategoryController) GetCategoriesWithPagination(ctx *gin.Context) {
 	pageReq, err := utils.ParsePaginationQuery(ctx)
 	if err != nil {
 		utils.ErrorResponse(ctx, http.StatusBadRequest, "invalid query params")
 		return
 	}
 
-	res, pagination, err := c.usecase.GetCategories(ctx.Copy().Request.Context(), pageReq)
+	res, pagination, err := c.usecase.GetCategoriesWithPagination(ctx.Copy().Request.Context(), pageReq)
 	if err != nil {
 		handleError(ctx, err)
 		return

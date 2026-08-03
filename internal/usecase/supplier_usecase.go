@@ -20,7 +20,7 @@ func NewSupplierUsecase(repo repository.SupplierRepository) *SupplierUsecase {
 	return &SupplierUsecase{repo: repo}
 }
 
-func (u *SupplierUsecase) Create(ctx context.Context, req model.CreateSupplierRequest) (*model.SupplierResponse, error) {
+func (u *SupplierUsecase) CreateSupplier(ctx context.Context, req model.CreateSupplierRequest) (*model.SupplierResponse, error) {
 	existing, err := u.repo.FindByName(ctx, req.Name)
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, errs.NewInternal("failed to check existing supplier")
@@ -44,7 +44,7 @@ func (u *SupplierUsecase) Create(ctx context.Context, req model.CreateSupplierRe
 	return toSupplierResponse(supplier), nil
 }
 
-func (u *SupplierUsecase) GetSuppliers(ctx context.Context, req model.PaginationRequest) ([]model.SupplierResponse, utils.Pagination, error) {
+func (u *SupplierUsecase) GetSuppliersWithPagination(ctx context.Context, req model.PaginationRequest) ([]model.SupplierResponse, utils.Pagination, error) {
 	suppliers, total, err := u.repo.FindSuppliers(ctx, req)
 	if err != nil {
 		return nil, utils.Pagination{}, errs.NewInternal("failed to fetch suppliers")
@@ -63,12 +63,12 @@ func (u *SupplierUsecase) GetSuppliers(ctx context.Context, req model.Pagination
 func (u *SupplierUsecase) GetSupplierById(ctx context.Context, id string) (*model.SupplierResponse, error) {
 	category, err := u.repo.FindById(ctx, id)
 	if err != nil {
-		return nil, errs.NewNotFound("category not found")
+		return nil, errs.NewNotFound("supplier not found")
 	}
 	return toSupplierResponse(category), nil
 }
 
-func (u *SupplierUsecase) Update(ctx context.Context, id string, req model.UpdateSupplierRequest) (*model.SupplierResponse, error) {
+func (u *SupplierUsecase) UpdateSupplier(ctx context.Context, id string, req model.UpdateSupplierRequest) (*model.SupplierResponse, error) {
 	supplier, err := u.repo.FindById(ctx, id)
 	if err != nil {
 		return nil, errs.NewNotFound("supplier not found")
@@ -105,7 +105,7 @@ func (u *SupplierUsecase) UpdateStatus(ctx context.Context, id string, req model
 	return toSupplierResponse(supplier), nil
 }
 
-func (u *SupplierUsecase) Delete(ctx context.Context, id string) error {
+func (u *SupplierUsecase) DeleteSupplier(ctx context.Context, id string) error {
 	_, err := u.repo.FindById(ctx, id)
 	if err != nil {
 		return errs.NewNotFound("supplier not found")
