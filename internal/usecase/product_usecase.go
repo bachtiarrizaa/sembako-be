@@ -125,6 +125,56 @@ func (u *ProductUsecase) GetProductByID(ctx context.Context, id string) (*model.
 	return toProductResponse(product), nil
 }
 
+func (u *ProductUsecase) UpdateProduct(ctx context.Context, id string, req model.UpdateProductRequest) (*model.ProductResponse, error) {
+	product, err := u.productRepo.FindById(ctx, id)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errs.NewNotFound("product not found")
+		}
+		return nil, errs.NewInternal("failed to fetch product")
+	}
+
+	existing, err := u.productRepo.FindByName(ctx, req.Name)
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, errs.NewInternal("failed to check existing product")
+	}
+	if existing != nil && existing.ID != id {
+		return nil, errs.NewConflict("product name already exists")
+	}
+
+	product.CategoryID = req.CategoryID
+	product.Name = req.Name
+	product.MinimumStock = req.MinimumStock
+	product.MarginThresholdPercent = req.MarginThresholdPercent
+
+	if err := u.productRepo.Update(ctx, product); err != nil {
+		return nil, errs.NewInternal("failed to update product")
+	}
+
+	updated, err := u.productRepo.FindById(ctx, product.ID)
+	if err != nil {
+		return nil, errs.NewInternal("failed to load updated product")
+	}
+
+	return toProductResponse(updated), nil
+}
+
+func (u *ProductUsecase) DeleteProduct(ctx context.Context, id string) error {
+	product, err := u.productRepo.FindById(ctx, id)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return errs.NewNotFound("product not found")
+		}
+		return errs.NewInternal("failed to fetch product")
+	}
+
+	if err := u.productRepo.Delete(ctx, product.ID); err != nil {
+		return errs.NewInternal("failed to delete product")
+	}
+
+	return nil
+}
+
 func validateProductUnits(units []model.CreateProductUnitRequest) error {
 	baseUnitCount := 0
 	seenUnitID := make(map[string]bool)
@@ -151,6 +201,46 @@ func validateProductUnits(units []model.CreateProductUnitRequest) error {
 	}
 
 	return nil
+}
+
+func (u *ProductUsecase) UpdateProductStatus(ctx context.Context, id string) (*model.ProductResponse, error) {
+	product, err := u.productRepo.FindById(ctx, id)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errs.NewNotFound("product not found")
+		}
+		return nil, errs.NewInternal("failed to fetch product")
+	}
+
+	product.IsActive = !product.IsActive
+
+	txErr := u.db.Transaction(func(tx *gorm.DB) error {
+		productRepoTx := u.productRepo.WithTx(tx)
+		productUnitRepoTx := u.productUnitRepo.WithTx(tx)
+
+		if err := productRepoTx.Update(ctx, product); err != nil {
+			return err
+		}
+
+		if !product.IsActive {
+			if err := productUnitRepoTx.DeactivateAllByProductID(ctx, product.ID); err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
+
+	if txErr != nil {
+		return nil, errs.NewInternal("failed to update product status")
+	}
+
+	updated, err := u.productRepo.FindById(ctx, product.ID)
+	if err != nil {
+		return nil, errs.NewInternal("failed to load updated product")
+	}
+
+	return toProductResponse(updated), nil
 }
 
 func toProductResponse(product *entity.Product) *model.ProductResponse {

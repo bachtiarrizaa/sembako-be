@@ -17,6 +17,24 @@ type CreateProductRequest struct {
 	Units                  []CreateProductUnitRequest `json:"units" validate:"required,min=1,dive"`
 }
 
+type UpdateProductUnitRequest struct {
+	ConversionToBase float64 `json:"conversionToBase" validate:"required,gt=0"`
+	SellingPrice     float64 `json:"sellingPrice" validate:"required,gt=0"`
+}
+
+type UpdateProductRequest struct {
+	CategoryID             string   `json:"categoryId" validate:"required,uuid"`
+	Name                   string   `json:"name" validate:"required,min=2,max=150"`
+	MinimumStock           *float64 `json:"minimumStock" validate:"omitempty,gte=0"`
+	MarginThresholdPercent *float64 `json:"marginThresholdPercent" validate:"omitempty,gte=0,lte=100"`
+}
+
+type AddProductUnitRequest struct {
+	UnitID           string  `json:"unitId" validate:"required,uuid"`
+	ConversionToBase float64 `json:"conversionToBase" validate:"required,gt=0"`
+	SellingPrice     float64 `json:"sellingPrice" validate:"required,gt=0"`
+}
+
 type UnitInProductResponse struct {
 	ID   string `json:"id"`
 	Name string `json:"name"`
