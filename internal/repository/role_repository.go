@@ -11,7 +11,7 @@ import (
 
 type RoleRepository interface {
 	Create(ctx context.Context, role *entity.Role) error
-	FindAllPaginated(ctx context.Context, req model.PaginationRequest) ([]entity.Role, int64, error)
+	FindRoles(ctx context.Context, req model.PaginationRequest) ([]entity.Role, int64, error)
 	FindByID(ctx context.Context, id string) (*entity.Role, error)
 	FindByName(ctx context.Context, name string) (*entity.Role, error)
 	Update(ctx context.Context, role *entity.Role) error
@@ -30,7 +30,7 @@ func (r *roleRepositoryImpl) Create(ctx context.Context, role *entity.Role) erro
 	return r.db.WithContext(ctx).Create(role).Error
 }
 
-func (r *roleRepositoryImpl) FindAllPaginated(ctx context.Context, req model.PaginationRequest) ([]entity.Role, int64, error) {
+func (r *roleRepositoryImpl) FindRoles(ctx context.Context, req model.PaginationRequest) ([]entity.Role, int64, error) {
 	var roles []entity.Role
 	var total int64
 

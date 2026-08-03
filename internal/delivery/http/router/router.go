@@ -24,14 +24,7 @@ func Setup(
 
 	registerAuthRoutes(api, authController, jwtSecret, blacklistRepo)
 
-	roles := api.Group("/roles")
-	{
-		roles.POST("", roleController.Create)
-		roles.GET("", middleware.AuthMiddleware(jwtSecret, blacklistRepo), roleController.GetAll)
-		roles.GET("/:id", roleController.GetByID)
-		roles.PUT("/:id", roleController.Update)
-		roles.DELETE("/:id", roleController.Delete)
-	}
+	registerRoleRoutes(api, roleController, jwtSecret, blacklistRepo)
 
 	users := api.Group("/users", middleware.AuthMiddleware(jwtSecret, blacklistRepo))
 	{
