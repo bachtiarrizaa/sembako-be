@@ -16,18 +16,25 @@ import (
 const refreshTokenCookieName = "refreshToken"
 
 type AuthController struct {
-	authUsecase     *usecase.AuthUsecase
-	validator       *validator.Validate
-	isProduction    bool
-	refreshTokenTTL time.Duration
+	authUsecase          *usecase.AuthUsecase
+	passwordResetUsecase *usecase.PasswordResetUsecase
+	validator            *validator.Validate
+	isProduction         bool
+	refreshTokenTTL      time.Duration
 }
 
-func NewAuthController(authUsecase *usecase.AuthUsecase, isProduction bool, refreshTokenTTL time.Duration) *AuthController {
+func NewAuthController(
+	authUsecase *usecase.AuthUsecase,
+	passwordResetUsecase *usecase.PasswordResetUsecase,
+	isProduction bool,
+	refreshTokenTTL time.Duration,
+) *AuthController {
 	return &AuthController{
-		authUsecase:     authUsecase,
-		validator:       validator.New(),
-		isProduction:    isProduction,
-		refreshTokenTTL: refreshTokenTTL,
+		authUsecase:          authUsecase,
+		passwordResetUsecase: passwordResetUsecase,
+		validator:            validator.New(),
+		isProduction:         isProduction,
+		refreshTokenTTL:      refreshTokenTTL,
 	}
 }
 
@@ -89,6 +96,44 @@ func (ctrl *AuthController) Logout(c *gin.Context) {
 
 	ctrl.clearRefreshCookie(c)
 	utils.SuccessResponse(c, http.StatusOK, "logout successful", nil)
+}
+
+func (ctrl *AuthController) ForgotPassword(c *gin.Context) {
+	var req model.ForgotPasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.ErrorResponse(c, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	if err := ctrl.validator.Struct(req); err != nil {
+		utils.ErrorResponse(c, http.StatusUnprocessableEntity, utils.FormatValidationError(err))
+		return
+	}
+
+	if err := ctrl.passwordResetUsecase.ForgotPassword(c.Request.Context(), req.Email); err != nil {
+		handleError(c, err)
+		return
+	}
+
+	utils.SuccessResponse(c, http.StatusOK, "if the email exists, a password reset link has been sent", nil)
+}
+
+func (ctrl *AuthController) ResetPassword(c *gin.Context) {
+	var req model.ResetPasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.ErrorResponse(c, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	if err := ctrl.validator.Struct(req); err != nil {
+		utils.ErrorResponse(c, http.StatusUnprocessableEntity, utils.FormatValidationError(err))
+		return
+	}
+
+	if err := ctrl.passwordResetUsecase.ResetPassword(c.Request.Context(), req.Token, req.NewPassword); err != nil {
+		handleError(c, err)
+		return
+	}
+
+	utils.SuccessResponse(c, http.StatusOK, "password reset successful", nil)
 }
 
 func (ctrl *AuthController) setRefreshCookie(c *gin.Context, rawToken string) {

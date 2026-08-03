@@ -42,7 +42,7 @@ func main() {
 	users := []entity.User{
 		{
 			Name:         "Admin Store",
-			Email:        "admin@sembako.com",
+			Email:        "scoobyd.doo89@gmail.com",
 			Username:     &ownerUsername,
 			PasswordHash: passStr,
 			RoleID:       rolesMap["admin"].ID,

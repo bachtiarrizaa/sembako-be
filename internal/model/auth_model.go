@@ -13,3 +13,12 @@ type LoginResponse struct {
 type RefreshResponse struct {
 	AccessToken string `json:"accessToken"`
 }
+
+type ForgotPasswordRequest struct {
+	Email string `json:"email" binding:"required,email"`
+}
+
+type ResetPasswordRequest struct {
+	Token       string `json:"token" binding:"required"`
+	NewPassword string `json:"newPassword" binding:"required,min=8"`
+}
