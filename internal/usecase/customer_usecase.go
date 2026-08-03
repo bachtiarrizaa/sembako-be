@@ -53,7 +53,7 @@ func (u *CustomerUsecase) Create(ctx context.Context, req model.CreateCustomerRe
 	return toCustomerResponse(customer), nil
 }
 
-func (u *CustomerUsecase) GetAll(ctx context.Context, req model.PaginationRequest) ([]model.CustomerResponse, utils.Pagination, error) {
+func (u *CustomerUsecase) GetCustomersWithPagination(ctx context.Context, req model.PaginationRequest) ([]model.CustomerResponse, utils.Pagination, error) {
 	customers, total, err := u.repo.FindCustomers(ctx, req)
 	if err != nil {
 		return nil, utils.Pagination{}, errs.NewInternal("failed to fetch customers")

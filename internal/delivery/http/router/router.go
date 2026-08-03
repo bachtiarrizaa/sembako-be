@@ -62,19 +62,12 @@ func Setup(
 		supplier.DELETE("/:id", supplierController.Delete)
 	}
 
-	unit := api.Group("/units", middleware.AuthMiddleware(jwtSecret, blacklistRepo))
-	{
-		unit.POST("", unitController.Create)
-		unit.GET("", unitController.GetUnits)
-		unit.GET("/:id", unitController.GetByID)
-		unit.PUT("/:id", unitController.Update)
-		unit.DELETE("/:id", unitController.Delete)
-	}
+	registerUnitRoutes(api, unitController, jwtSecret, blacklistRepo)
 
 	customer := api.Group("/customers", middleware.AuthMiddleware(jwtSecret, blacklistRepo))
 	{
 		customer.POST("", customerController.Create)
-		customer.GET("", customerController.GetAll)
+		customer.GET("", customerController.GetCustomersWithPagination)
 		customer.GET("/:id", customerController.GetById)
 		customer.PUT("/:id", customerController.Update)
 		customer.PUT("/:id/status", customerController.UpdateStatus)

@@ -37,7 +37,7 @@ func (u *Unitusecase) Create(ctx context.Context, req model.CreateUnitRequest) (
 	return toUnitResponse(unit), nil
 }
 
-func (u *Unitusecase) GetUnits(ctx context.Context, req model.PaginationRequest) ([]model.UnitResponse, utils.Pagination, error) {
+func (u *Unitusecase) GetUnitsWithPagination(ctx context.Context, req model.PaginationRequest) ([]model.UnitResponse, utils.Pagination, error) {
 	units, total, err := u.repo.FindUnits(ctx, req)
 	if err != nil {
 		return nil, utils.Pagination{}, errs.NewInternal("failed to fetch untis")
