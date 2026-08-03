@@ -2,7 +2,6 @@ package controller
 
 import (
 	"net/http"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
@@ -45,30 +44,19 @@ func (c *CustomerController) Create(ctx *gin.Context) {
 	utils.SuccessResponse(ctx, http.StatusCreated, "customer created successfully", res)
 }
 
-func (c *CustomerController) GetAll(ctx *gin.Context) {
-	// Parsing pagination dari query parameter (?page=1&limit=10&search=budi)
-	page, _ := strconv.Atoi(ctx.DefaultQuery("page", "1"))
-	limit, _ := strconv.Atoi(ctx.DefaultQuery("limit", "10"))
-	search := ctx.Query("search")
-
-	req := model.PaginationRequest{
-		Page:   page,
-		Limit:  limit,
-		Search: search,
+func (c *CustomerController) GetCustomersWithPagination(ctx *gin.Context) {
+	pageReq, err := utils.ParsePaginationQuery(ctx)
+	if err != nil {
+		utils.ErrorResponse(ctx, http.StatusBadRequest, "invalid query params")
+		return
 	}
 
-	res, pagination, err := c.usecase.GetAll(ctx.Request.Context(), req)
+	res, pagination, err := c.usecase.GetCustomersWithPagination(ctx.Request.Context(), pageReq)
 	if err != nil {
 		handleError(ctx, err)
 		return
 	}
-
-	ctx.JSON(http.StatusOK, gin.H{
-		"success":    true,
-		"message":    "customers fetched successfully",
-		"data":       res,
-		"pagination": pagination,
-	})
+	utils.SuccessResponseWithPagination(ctx, http.StatusOK, "customers fetched successfully", res, pagination)
 }
 
 func (c *CustomerController) GetById(ctx *gin.Context) {

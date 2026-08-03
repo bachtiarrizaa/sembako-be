@@ -42,14 +42,14 @@ func (c *UnitController) Create(ctx *gin.Context) {
 	utils.SuccessResponse(ctx, http.StatusCreated, "unit created successfully", res)
 }
 
-func (c *UnitController) GetUnits(ctx *gin.Context) {
+func (c *UnitController) GetUnitsWithPagination(ctx *gin.Context) {
 	pagReq, err := utils.ParsePaginationQuery(ctx)
 	if err != nil {
 		utils.ErrorResponse(ctx, http.StatusBadRequest, "invalid query params")
 		return
 	}
 
-	res, pagination, err := c.usecase.GetUnits(ctx.Request.Context(), pagReq)
+	res, pagination, err := c.usecase.GetUnitsWithPagination(ctx.Request.Context(), pagReq)
 	if err != nil {
 		handleError(ctx, err)
 		return
