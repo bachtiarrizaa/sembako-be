@@ -10,5 +10,5 @@ type Unit struct {
 }
 
 func (Unit) TableName() string {
-	return "categories"
+	return "units"
 }

@@ -43,7 +43,7 @@ func (u *CategoryUsecase) GetCategoriesWithPagination(ctx context.Context, req m
 		return nil, utils.Pagination{}, errs.NewInternal("failed to fetch categories")
 	}
 
-	var res []model.CategoryResponse
+	res := []model.CategoryResponse{}
 	for _, r := range categories {
 		res = append(res, *toCategoryResponse(&r))
 	}

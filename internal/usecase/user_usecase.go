@@ -75,7 +75,7 @@ func (uc *UserUsecase) GetUsersWithPagination(ctx context.Context, req model.Pag
 		return nil, utils.Pagination{}, errs.NewInternal("failed to fetch users")
 	}
 
-	var res []model.UserResponse
+	res := []model.UserResponse{}
 	for _, u := range users {
 		res = append(res, model.ToUserResponse(&u))
 	}

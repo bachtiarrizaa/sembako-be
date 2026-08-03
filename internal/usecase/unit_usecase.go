@@ -43,7 +43,7 @@ func (u *Unitusecase) GetUnitsWithPagination(ctx context.Context, req model.Pagi
 		return nil, utils.Pagination{}, errs.NewInternal("failed to fetch untis")
 	}
 
-	var res []model.UnitResponse
+	res := []model.UnitResponse{}
 	for _, r := range units {
 		res = append(res, *toUnitResponse(&r))
 	}

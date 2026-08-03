@@ -43,7 +43,7 @@ func (u *RoleUsecase) GetRolesWithPagination(ctx context.Context, req model.Pagi
 		return nil, utils.Pagination{}, errs.NewInternal("failed to fetch roles")
 	}
 
-	var res []model.RoleResponse
+	res := []model.RoleResponse{}
 	for _, r := range roles {
 		res = append(res, *toRoleResponse(&r))
 	}

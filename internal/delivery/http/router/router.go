@@ -18,6 +18,7 @@ func Setup(
 	supplierController *controller.SupplierController,
 	unitController *controller.UnitController,
 	customerController *controller.CustomerController,
+	productController *controller.ProductController,
 ) {
 	api := router.Group("/api")
 
@@ -34,4 +35,6 @@ func Setup(
 	registerUnitRoutes(api, unitController, jwtSecret, blacklistRepo)
 
 	registerCustomerRoutes(api, customerController, jwtSecret, blacklistRepo)
+
+	registerProductRoutes(api, productController, jwtSecret, blacklistRepo)
 }
