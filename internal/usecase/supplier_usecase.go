@@ -50,7 +50,7 @@ func (u *SupplierUsecase) GetSuppliersWithPagination(ctx context.Context, req mo
 		return nil, utils.Pagination{}, errs.NewInternal("failed to fetch suppliers")
 	}
 
-	var res []model.SupplierResponse
+	res := []model.SupplierResponse{}
 	for _, r := range suppliers {
 		res = append(res, *toSupplierResponse(&r))
 	}

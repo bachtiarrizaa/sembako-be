@@ -1,0 +1,190 @@
+package usecase
+
+import (
+	"context"
+	"errors"
+
+	"github.com/bachtiarrizaa/sembako-be/internal/entity"
+	"github.com/bachtiarrizaa/sembako-be/internal/model"
+	"github.com/bachtiarrizaa/sembako-be/internal/pkg/errs"
+	"github.com/bachtiarrizaa/sembako-be/internal/pkg/utils"
+	"github.com/bachtiarrizaa/sembako-be/internal/repository"
+	"gorm.io/gorm"
+)
+
+type ProductUsecase struct {
+	db              *gorm.DB
+	productRepo     repository.ProductRepository
+	productUnitRepo repository.ProductUnitRepository
+}
+
+func NewProductUsecase(
+	db *gorm.DB,
+	productRepo repository.ProductRepository,
+	productUnitRepo repository.ProductUnitRepository,
+) *ProductUsecase {
+	return &ProductUsecase{
+		db:              db,
+		productRepo:     productRepo,
+		productUnitRepo: productUnitRepo,
+	}
+}
+
+func (u *ProductUsecase) CreateProduct(ctx context.Context, req model.CreateProductRequest) (*model.ProductResponse, error) {
+	if err := validateProductUnits(req.Units); err != nil {
+		return nil, err
+	}
+
+	var baseUnitID string
+	for _, ur := range req.Units {
+		if ur.IsBaseUnit {
+			baseUnitID = ur.UnitID
+			break
+		}
+	}
+
+	existing, err := u.productRepo.FindByName(ctx, req.Name)
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, errs.NewInternal("failed to check existing product")
+	}
+	if existing != nil {
+		return nil, errs.NewConflict("product name already exists")
+	}
+
+	var product *entity.Product
+
+	txErr := u.db.Transaction(func(tx *gorm.DB) error {
+		productRepoTx := u.productRepo.WithTx(tx)
+		productUnitRepoTx := u.productUnitRepo.WithTx(tx)
+
+		product = &entity.Product{
+			CategoryID:             req.CategoryID,
+			Name:                   req.Name,
+			BaseUnitID:             baseUnitID,
+			MinimumStock:           req.MinimumStock,
+			MarginThresholdPercent: req.MarginThresholdPercent,
+			IsActive:               true,
+		}
+		if err := productRepoTx.Create(ctx, product); err != nil {
+			return err
+		}
+
+		units := make([]entity.ProductUnit, 0, len(req.Units))
+		for _, ur := range req.Units {
+			units = append(units, entity.ProductUnit{
+				ProductID:        product.ID,
+				UnitID:           ur.UnitID,
+				ConversionToBase: ur.ConversionToBase,
+				SellingPrice:     ur.SellingPrice,
+				IsBaseUnit:       ur.IsBaseUnit,
+				IsActive:         true,
+			})
+		}
+		if err := productUnitRepoTx.CreateMany(ctx, units); err != nil {
+			return err
+		}
+
+		return nil
+	})
+
+	if txErr != nil {
+		return nil, errs.NewInternal("failed to create product")
+	}
+
+	created, err := u.productRepo.FindById(ctx, product.ID)
+	if err != nil {
+		return nil, errs.NewInternal("failed to load created product")
+	}
+
+	return toProductResponse(created), nil
+}
+
+func (u *ProductUsecase) GetProducts(ctx context.Context, req model.PaginationRequest) ([]model.ProductResponse, utils.Pagination, error) {
+	products, total, err := u.productRepo.FindProducts(ctx, req)
+	if err != nil {
+		return nil, utils.Pagination{}, errs.NewInternal("failed to fetch products")
+	}
+
+	res := []model.ProductResponse{}
+	for _, p := range products {
+		res = append(res, *toProductResponse(&p))
+	}
+
+	pagination := utils.BuildPagination(req.Page, req.Limit, total)
+	return res, pagination, nil
+}
+
+func (u *ProductUsecase) GetProductByID(ctx context.Context, id string) (*model.ProductResponse, error) {
+	product, err := u.productRepo.FindById(ctx, id)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errs.NewNotFound("product not found")
+		}
+		return nil, errs.NewInternal("failed to fetch product")
+	}
+	return toProductResponse(product), nil
+}
+
+func validateProductUnits(units []model.CreateProductUnitRequest) error {
+	baseUnitCount := 0
+	seenUnitID := make(map[string]bool)
+
+	for _, u := range units {
+		if seenUnitID[u.UnitID] {
+			return errs.NewBadRequest("duplicate unit in product units")
+		}
+		seenUnitID[u.UnitID] = true
+
+		if u.IsBaseUnit {
+			baseUnitCount++
+			if u.ConversionToBase != 1 {
+				return errs.NewBadRequest("base unit must have conversionToBase = 1")
+			}
+		}
+	}
+
+	if baseUnitCount == 0 {
+		return errs.NewBadRequest("exactly one unit must be marked as base unit")
+	}
+	if baseUnitCount > 1 {
+		return errs.NewBadRequest("only one unit can be marked as base unit")
+	}
+
+	return nil
+}
+
+func toProductResponse(product *entity.Product) *model.ProductResponse {
+	units := make([]model.ProductUnitResponse, 0, len(product.Units))
+	for _, pu := range product.Units {
+		units = append(units, model.ProductUnitResponse{
+			ID: pu.ID,
+			Unit: model.UnitInProductResponse{
+				ID:   pu.Unit.ID,
+				Name: pu.Unit.Name,
+			},
+			ConversionToBase: pu.ConversionToBase,
+			SellingPrice:     pu.SellingPrice,
+			IsBaseUnit:       pu.IsBaseUnit,
+			IsActive:         pu.IsActive,
+		})
+	}
+
+	return &model.ProductResponse{
+		ID: product.ID,
+		Category: model.CategoryInProductResponse{
+			ID:   product.Category.ID,
+			Name: product.Category.Name,
+		},
+		Name: product.Name,
+		BaseUnit: model.UnitInProductResponse{
+			ID:   product.BaseUnit.ID,
+			Name: product.BaseUnit.Name,
+		},
+		MinimumStock:           product.MinimumStock,
+		MarginThresholdPercent: product.MarginThresholdPercent,
+		IsActive:               product.IsActive,
+		Units:                  units,
+		CreatedAt:              product.CreatedAt,
+		UpdatedAt:              product.UpdatedAt,
+	}
+}

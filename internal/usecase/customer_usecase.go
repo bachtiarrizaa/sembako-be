@@ -59,7 +59,7 @@ func (u *CustomerUsecase) GetCustomersWithPagination(ctx context.Context, req mo
 		return nil, utils.Pagination{}, errs.NewInternal("failed to fetch customers")
 	}
 
-	var res []model.CustomerResponse
+	res := []model.CustomerResponse{}
 	for _, c := range customers {
 		res = append(res, *toCustomerResponse(&c))
 	}
