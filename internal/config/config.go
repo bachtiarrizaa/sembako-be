@@ -23,6 +23,12 @@ type Config struct {
 	JWTAccessExpireMinutes int
 	JWTRefreshSecret       string
 	JWTRefreshExpireDays   int
+
+	BrevoApiKey             string
+	BrevoSenderEmail        string
+	BrevoSenderName         string
+	FrontendResetUrl        string
+	ResetTokenExpireMinutes int
 }
 
 func LoadConfig() *Config {
@@ -40,6 +46,11 @@ func LoadConfig() *Config {
 		refreshExpire = 7
 	}
 
+	resetExpire, err := strconv.Atoi(getEnv("RESET_TOKEN_EXPIRE_MINUTES", "30"))
+	if err != nil {
+		resetExpire = 30
+	}
+
 	return &Config{
 		AppPort: getEnv("APP_PORT", "8080"),
 		AppEnv:  getEnv("APP_ENV", "development"),
@@ -51,10 +62,15 @@ func LoadConfig() *Config {
 		DBName:     getEnv("DB_NAME", "sembako_pos"),
 		DBSSLMode:  getEnv("DB_SSLMODE", "disable"),
 
-		JWTAccessSecret:        getEnv("JWT_ACCESS_SECRET", ""),
-		JWTAccessExpireMinutes: accessExpire,
-		JWTRefreshSecret:       getEnv("JWT_REFRESH_SECRET", ""),
-		JWTRefreshExpireDays:   refreshExpire,
+		JWTAccessSecret:         getEnv("JWT_ACCESS_SECRET", ""),
+		JWTAccessExpireMinutes:  accessExpire,
+		JWTRefreshSecret:        getEnv("JWT_REFRESH_SECRET", ""),
+		JWTRefreshExpireDays:    refreshExpire,
+		BrevoApiKey:             getEnv("BREVO_API_KEY", ""),
+		BrevoSenderEmail:        getEnv("BREVO_SENDER_EMAIL", ""),
+		BrevoSenderName:         getEnv("BREVO_SENDER_NAME", "Sembako App"),
+		FrontendResetUrl:        getEnv("FRONTEND_RESET_URL", "http://localhost:3000/reset-password"),
+		ResetTokenExpireMinutes: resetExpire,
 	}
 }
 

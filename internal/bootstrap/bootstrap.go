@@ -9,6 +9,7 @@ import (
 	"github.com/bachtiarrizaa/sembako-be/internal/config"
 	"github.com/bachtiarrizaa/sembako-be/internal/delivery/http/controller"
 	"github.com/bachtiarrizaa/sembako-be/internal/delivery/http/router"
+	"github.com/bachtiarrizaa/sembako-be/internal/pkg/brevo"
 	"github.com/bachtiarrizaa/sembako-be/internal/repository"
 	"github.com/bachtiarrizaa/sembako-be/internal/usecase"
 )
@@ -36,6 +37,8 @@ func InitializeApp(cfg *config.Config) (*gin.Engine, error) {
 	userRepo := repository.NewUserRepository(db)
 	refreshTokenRepo := repository.NewRefreshTokenRepository(db)
 	blacklistRepo := repository.NewBlacklistRepository(db)
+	passwordResetRepo := repository.NewPasswordResetRepository(db)
+	brevoService := brevo.NewBrevoService(cfg.BrevoApiKey, cfg.BrevoSenderEmail, cfg.BrevoSenderName)
 
 	authUsecase := usecase.NewAuthUsecase(
 		userRepo,
@@ -45,7 +48,17 @@ func InitializeApp(cfg *config.Config) (*gin.Engine, error) {
 		time.Duration(cfg.JWTAccessExpireMinutes)*time.Minute,
 		refreshTTL,
 	)
-	authController := controller.NewAuthController(authUsecase, isProduction, refreshTTL)
+
+	passwordResetUsecase := usecase.NewPasswordResetUsecase(
+		userRepo,
+		refreshTokenRepo,
+		passwordResetRepo,
+		brevoService,
+		cfg.FrontendResetUrl,
+		cfg.ResetTokenExpireMinutes,
+	)
+
+	authController := controller.NewAuthController(authUsecase, passwordResetUsecase, isProduction, refreshTTL)
 
 	userUsecase := usecase.NewUserUsecase(userRepo, roleRepo)
 	userController := controller.NewUserController(userUsecase)

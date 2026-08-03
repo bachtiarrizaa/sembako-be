@@ -22,12 +22,7 @@ func Setup(
 ) {
 	api := router.Group("/api")
 
-	auth := api.Group("/auth")
-	{
-		auth.POST("/login", authController.Login)
-		auth.POST("/refresh", authController.Refresh)
-		auth.POST("/logout", middleware.AuthMiddleware(jwtSecret, blacklistRepo), authController.Logout)
-	}
+	registerAuthRoutes(api, authController, jwtSecret, blacklistRepo)
 
 	roles := api.Group("/roles")
 	{
