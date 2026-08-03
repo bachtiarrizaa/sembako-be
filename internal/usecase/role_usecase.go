@@ -37,8 +37,8 @@ func (u *RoleUsecase) CreateRole(ctx context.Context, req model.CreateRoleReques
 	return toRoleResponse(role), nil
 }
 
-func (u *RoleUsecase) GetAllRoles(ctx context.Context, req model.PaginationRequest) ([]model.RoleResponse, utils.Pagination, error) {
-	roles, total, err := u.repo.FindAllPaginated(ctx, req)
+func (u *RoleUsecase) GetRolesWithPagination(ctx context.Context, req model.PaginationRequest) ([]model.RoleResponse, utils.Pagination, error) {
+	roles, total, err := u.repo.FindRoles(ctx, req)
 	if err != nil {
 		return nil, utils.Pagination{}, errs.NewInternal("failed to fetch roles")
 	}

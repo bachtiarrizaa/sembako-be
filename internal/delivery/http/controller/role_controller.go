@@ -42,14 +42,14 @@ func (c *RoleController) Create(ctx *gin.Context) {
 	utils.SuccessResponse(ctx, http.StatusCreated, "role created successfully", res)
 }
 
-func (c *RoleController) GetAll(ctx *gin.Context) {
+func (c *RoleController) GetRolesWithPagination(ctx *gin.Context) {
 	pagReq, err := utils.ParsePaginationQuery(ctx)
 	if err != nil {
 		utils.ErrorResponse(ctx, http.StatusBadRequest, "invalid query params")
 		return
 	}
 
-	res, pagination, err := c.usecase.GetAllRoles(ctx.Request.Context(), pagReq)
+	res, pagination, err := c.usecase.GetRolesWithPagination(ctx.Request.Context(), pagReq)
 	if err != nil {
 		handleError(ctx, err)
 		return
