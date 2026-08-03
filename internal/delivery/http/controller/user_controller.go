@@ -41,7 +41,7 @@ func (ctrl *UserController) GetMe(c *gin.Context) {
 	utils.SuccessResponse(c, http.StatusOK, "profile fetched successfully", res)
 }
 
-func (ctrl *UserController) Create(c *gin.Context) {
+func (ctrl *UserController) CreateUser(c *gin.Context) {
 	var req model.CreateUserRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		utils.ErrorResponse(c, http.StatusBadRequest, "invalid request body")
@@ -62,14 +62,14 @@ func (ctrl *UserController) Create(c *gin.Context) {
 	utils.SuccessResponse(c, http.StatusCreated, "user created successfully", res)
 }
 
-func (ctrl *UserController) GetAll(c *gin.Context) {
+func (ctrl *UserController) GetUsersWithPagination(c *gin.Context) {
 	pagReq, err := utils.ParsePaginationQuery(c)
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusBadRequest, "invalid query params")
 		return
 	}
 
-	res, pagination, err := ctrl.userUsecase.GetAllUsers(c.Request.Context(), pagReq)
+	res, pagination, err := ctrl.userUsecase.GetUsersWithPagination(c.Request.Context(), pagReq)
 	if err != nil {
 		handleError(c, err)
 		return
@@ -78,7 +78,7 @@ func (ctrl *UserController) GetAll(c *gin.Context) {
 	utils.SuccessResponseWithPagination(c, http.StatusOK, "users fetched successfully", res, pagination)
 }
 
-func (ctrl *UserController) GetByID(c *gin.Context) {
+func (ctrl *UserController) GetUserByID(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := uuid.Parse(idStr)
 	if err != nil {
@@ -95,7 +95,7 @@ func (ctrl *UserController) GetByID(c *gin.Context) {
 	utils.SuccessResponse(c, http.StatusOK, "user fetched successfully", res)
 }
 
-func (ctrl *UserController) Update(c *gin.Context) {
+func (ctrl *UserController) UpdateUser(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := uuid.Parse(idStr)
 	if err != nil {
@@ -123,7 +123,7 @@ func (ctrl *UserController) Update(c *gin.Context) {
 	utils.SuccessResponse(c, http.StatusOK, "user updated successfully", res)
 }
 
-func (ctrl *UserController) Delete(c *gin.Context) {
+func (ctrl *UserController) DeleteUser(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := uuid.Parse(idStr)
 	if err != nil {

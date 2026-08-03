@@ -23,7 +23,7 @@ func NewCustomerController(usecase *usecase.CustomerUsecase) *CustomerController
 	}
 }
 
-func (c *CustomerController) Create(ctx *gin.Context) {
+func (c *CustomerController) CreateCustomer(ctx *gin.Context) {
 	var req model.CreateCustomerRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		utils.ErrorResponse(ctx, http.StatusBadRequest, "invalid request body")
@@ -35,7 +35,7 @@ func (c *CustomerController) Create(ctx *gin.Context) {
 		return
 	}
 
-	res, err := c.usecase.Create(ctx.Request.Context(), req)
+	res, err := c.usecase.CreateCustomer(ctx.Request.Context(), req)
 	if err != nil {
 		handleError(ctx, err)
 		return
@@ -59,10 +59,10 @@ func (c *CustomerController) GetCustomersWithPagination(ctx *gin.Context) {
 	utils.SuccessResponseWithPagination(ctx, http.StatusOK, "customers fetched successfully", res, pagination)
 }
 
-func (c *CustomerController) GetById(ctx *gin.Context) {
+func (c *CustomerController) GetCustomerById(ctx *gin.Context) {
 	id := ctx.Param("id")
 
-	res, err := c.usecase.GetById(ctx.Request.Context(), id)
+	res, err := c.usecase.GetCustomerById(ctx.Request.Context(), id)
 	if err != nil {
 		handleError(ctx, err)
 		return
@@ -71,7 +71,7 @@ func (c *CustomerController) GetById(ctx *gin.Context) {
 	utils.SuccessResponse(ctx, http.StatusOK, "customer fetched successfully", res)
 }
 
-func (c *CustomerController) Update(ctx *gin.Context) {
+func (c *CustomerController) UpdateCustomer(ctx *gin.Context) {
 	id := ctx.Param("id")
 
 	var req model.UpdateCustomerRequest
@@ -85,7 +85,7 @@ func (c *CustomerController) Update(ctx *gin.Context) {
 		return
 	}
 
-	res, err := c.usecase.Update(ctx.Request.Context(), id, req)
+	res, err := c.usecase.UpdateCustomer(ctx.Request.Context(), id, req)
 	if err != nil {
 		handleError(ctx, err)
 		return
@@ -112,10 +112,10 @@ func (c *CustomerController) UpdateStatus(ctx *gin.Context) {
 	utils.SuccessResponse(ctx, http.StatusOK, "customer status updated successfully", res)
 }
 
-func (c *CustomerController) Delete(ctx *gin.Context) {
+func (c *CustomerController) DeleteCustomer(ctx *gin.Context) {
 	id := ctx.Param("id")
 
-	err := c.usecase.Delete(ctx.Request.Context(), id)
+	err := c.usecase.DeleteCustomer(ctx.Request.Context(), id)
 	if err != nil {
 		handleError(ctx, err)
 		return

@@ -23,7 +23,7 @@ func NewRoleController(usecase *usecase.RoleUsecase) *RoleController {
 	}
 }
 
-func (c *RoleController) Create(ctx *gin.Context) {
+func (c *RoleController) CreateRole(ctx *gin.Context) {
 	var req model.CreateRoleRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		utils.ErrorResponse(ctx, http.StatusBadRequest, "invalid request body")
@@ -57,7 +57,7 @@ func (c *RoleController) GetRolesWithPagination(ctx *gin.Context) {
 	utils.SuccessResponseWithPagination(ctx, http.StatusOK, "roles fetched successfully", res, pagination)
 }
 
-func (c *RoleController) GetByID(ctx *gin.Context) {
+func (c *RoleController) GetRoleByID(ctx *gin.Context) {
 	id := ctx.Param("id")
 	if id == "" {
 		utils.ErrorResponse(ctx, http.StatusBadRequest, "invalid id")
@@ -72,7 +72,7 @@ func (c *RoleController) GetByID(ctx *gin.Context) {
 	utils.SuccessResponse(ctx, http.StatusOK, "role fetched successfully", res)
 }
 
-func (c *RoleController) Update(ctx *gin.Context) {
+func (c *RoleController) UpdateRole(ctx *gin.Context) {
 	id := ctx.Param("id")
 	if id == "" {
 		utils.ErrorResponse(ctx, http.StatusBadRequest, "invalid id")
@@ -97,7 +97,7 @@ func (c *RoleController) Update(ctx *gin.Context) {
 	utils.SuccessResponse(ctx, http.StatusOK, "role updated successfully", res)
 }
 
-func (c *RoleController) Delete(ctx *gin.Context) {
+func (c *RoleController) DeleteRole(ctx *gin.Context) {
 	id := ctx.Param("id")
 	if id == "" {
 		utils.ErrorResponse(ctx, http.StatusBadRequest, "invalid id")

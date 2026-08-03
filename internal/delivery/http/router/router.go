@@ -4,7 +4,6 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/bachtiarrizaa/sembako-be/internal/delivery/http/controller"
-	"github.com/bachtiarrizaa/sembako-be/internal/delivery/http/middleware"
 	"github.com/bachtiarrizaa/sembako-be/internal/repository"
 )
 
@@ -26,44 +25,13 @@ func Setup(
 
 	registerRoleRoutes(api, roleController, jwtSecret, blacklistRepo)
 
-	users := api.Group("/users", middleware.AuthMiddleware(jwtSecret, blacklistRepo))
-	{
-		users.GET("/me", userController.GetMe)
-		users.POST("", userController.Create)
-		users.GET("", userController.GetAll)
-		users.GET("/:id", userController.GetByID)
-		users.PUT("/:id", userController.Update)
-		users.DELETE("/:id", userController.Delete)
-	}
+	registerUserRoutes(api, userController, jwtSecret, blacklistRepo)
 
-	categories := api.Group("/categories", middleware.AuthMiddleware(jwtSecret, blacklistRepo))
-	{
-		categories.POST("", categoryController.Create)
-		categories.GET("", categoryController.GetCategories)
-		categories.GET("/:id", categoryController.GetCategoryById)
-		categories.PUT("/:id", categoryController.UpdateCategory)
-		categories.DELETE("/:id", categoryController.DeleteCategory)
-	}
+	registerCategoryRoutes(api, categoryController, jwtSecret, blacklistRepo)
 
-	supplier := api.Group("/suppliers", middleware.AuthMiddleware(jwtSecret, blacklistRepo))
-	{
-		supplier.POST("", supplierController.Create)
-		supplier.GET("", supplierController.GetSuppliers)
-		supplier.GET("/:id", supplierController.GetSupplierById)
-		supplier.PUT("/:id", supplierController.Update)
-		supplier.PATCH("/:id/status", supplierController.UpdateStatus)
-		supplier.DELETE("/:id", supplierController.Delete)
-	}
+	registerSupplierRoutes(api, supplierController, jwtSecret, blacklistRepo)
 
 	registerUnitRoutes(api, unitController, jwtSecret, blacklistRepo)
 
-	customer := api.Group("/customers", middleware.AuthMiddleware(jwtSecret, blacklistRepo))
-	{
-		customer.POST("", customerController.Create)
-		customer.GET("", customerController.GetCustomersWithPagination)
-		customer.GET("/:id", customerController.GetById)
-		customer.PUT("/:id", customerController.Update)
-		customer.PUT("/:id/status", customerController.UpdateStatus)
-		customer.DELETE("/:id", customerController.Delete)
-	}
+	registerCustomerRoutes(api, customerController, jwtSecret, blacklistRepo)
 }

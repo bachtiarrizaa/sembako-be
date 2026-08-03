@@ -21,7 +21,7 @@ func NewCustomerUsecase(repo repository.CustomerRepository) *CustomerUsecase {
 	return &CustomerUsecase{repo: repo}
 }
 
-func (u *CustomerUsecase) Create(ctx context.Context, req model.CreateCustomerRequest) (*model.CustomerResponse, error) {
+func (u *CustomerUsecase) CreateCustomer(ctx context.Context, req model.CreateCustomerRequest) (*model.CustomerResponse, error) {
 	existingName, err := u.repo.FindByName(ctx, req.Name)
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, errs.NewInternal("failed to check existing customer name")
@@ -68,7 +68,7 @@ func (u *CustomerUsecase) GetCustomersWithPagination(ctx context.Context, req mo
 	return res, pagination, nil
 }
 
-func (u *CustomerUsecase) GetById(ctx context.Context, id string) (*model.CustomerResponse, error) {
+func (u *CustomerUsecase) GetCustomerById(ctx context.Context, id string) (*model.CustomerResponse, error) {
 	customer, err := u.repo.FindById(ctx, id)
 	if err != nil {
 		return nil, errs.NewNotFound("customer not found")
@@ -76,7 +76,7 @@ func (u *CustomerUsecase) GetById(ctx context.Context, id string) (*model.Custom
 	return toCustomerResponse(customer), nil
 }
 
-func (u *CustomerUsecase) Update(ctx context.Context, id string, req model.UpdateCustomerRequest) (*model.CustomerResponse, error) {
+func (u *CustomerUsecase) UpdateCustomer(ctx context.Context, id string, req model.UpdateCustomerRequest) (*model.CustomerResponse, error) {
 	customer, err := u.repo.FindById(ctx, id)
 	if err != nil {
 		return nil, errs.NewNotFound("customer not found")
@@ -118,7 +118,7 @@ func (u *CustomerUsecase) UpdateStatus(ctx context.Context, id string, req model
 	return toCustomerResponse(customer), nil
 }
 
-func (u *CustomerUsecase) Delete(ctx context.Context, id string) error {
+func (u *CustomerUsecase) DeleteCustomer(ctx context.Context, id string) error {
 	_, err := u.repo.FindById(ctx, id)
 	if err != nil {
 		return errs.NewNotFound("customer not found")

@@ -15,10 +15,10 @@ func registerUnitRoutes(
 ) {
 	unit := router.Group("/units", middleware.AuthMiddleware(jwtSecret, blacklistRepo))
 	{
-		unit.POST("", controller.Create)
+		unit.POST("", controller.CreateUnit)
 		unit.GET("", controller.GetUnitsWithPagination)
-		unit.GET("/:id", controller.GetByID)
-		unit.PUT("/:id", controller.Update)
-		unit.DELETE("/:id", controller.Delete)
+		unit.GET("/:id", controller.GetUnitByID)
+		unit.PUT("/:id", controller.UpdateUnit)
+		unit.DELETE("/:id", controller.DeleteUnit)
 	}
 }
