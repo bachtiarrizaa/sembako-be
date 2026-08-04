@@ -84,6 +84,10 @@ func InitializeApp(cfg *config.Config) (*gin.Engine, error) {
 	productUsecase := usecase.NewProductUsecase(db, productRepo, productUnitRepo)
 	productController := controller.NewProductController(productUsecase)
 
+	discountRepo := repository.NewDiscountRepository(db)
+	discountUsecase := usecase.NewDiscountUsecase(discountRepo)
+	discountController := controller.NewDiscountController(discountUsecase)
+
 	app := gin.Default()
 	router.Setup(
 		app,
@@ -97,6 +101,7 @@ func InitializeApp(cfg *config.Config) (*gin.Engine, error) {
 		unitController,
 		customerController,
 		productController,
+		discountController,
 	)
 
 	return app, nil
