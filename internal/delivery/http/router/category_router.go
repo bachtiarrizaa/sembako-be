@@ -13,12 +13,12 @@ func registerCategoryRoutes(
 	jwtSecret string,
 	blacklistRepo repository.BlacklistRepository,
 ) {
-	roles := router.Group("/categories", middleware.AuthMiddleware(jwtSecret, blacklistRepo))
+	category := router.Group("/categories", middleware.AuthMiddleware(jwtSecret, blacklistRepo))
 	{
-		roles.POST("", controller.CreateCategory)
-		roles.GET("", controller.GetCategoriesWithPagination)
-		roles.GET("/:id", controller.GetCategoryById)
-		roles.PUT("/:id", controller.UpdateCategory)
-		roles.DELETE("/:id", controller.DeleteCategory)
+		category.POST("", controller.CreateCategory)
+		category.GET("", controller.GetCategoriesWithPagination)
+		category.GET("/:id", controller.GetCategoryById)
+		category.PUT("/:id", controller.UpdateCategory)
+		category.DELETE("/:id", controller.DeleteCategory)
 	}
 }

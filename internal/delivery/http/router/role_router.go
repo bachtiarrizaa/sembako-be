@@ -13,12 +13,12 @@ func registerRoleRoutes(
 	jwtSecret string,
 	blacklistRepo repository.BlacklistRepository,
 ) {
-	roles := router.Group("/roles", middleware.AuthMiddleware(jwtSecret, blacklistRepo))
+	role := router.Group("/roles", middleware.AuthMiddleware(jwtSecret, blacklistRepo))
 	{
-		roles.POST("", controller.CreateRole)
-		roles.GET("", controller.GetRolesWithPagination)
-		roles.GET("/:id", controller.GetRoleByID)
-		roles.PUT("/:id", controller.UpdateRole)
-		roles.DELETE("/:id", controller.DeleteRole)
+		role.POST("", controller.CreateRole)
+		role.GET("", controller.GetRolesWithPagination)
+		role.GET("/:id", controller.GetRoleByID)
+		role.PUT("/:id", controller.UpdateRole)
+		role.DELETE("/:id", controller.DeleteRole)
 	}
 }

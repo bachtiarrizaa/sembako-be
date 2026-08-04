@@ -13,12 +13,12 @@ func registerCustomerRoutes(
 	jwtSecret string,
 	blacklistRepo repository.BlacklistRepository,
 ) {
-	unit := router.Group("/customers", middleware.AuthMiddleware(jwtSecret, blacklistRepo))
+	customer := router.Group("/customers", middleware.AuthMiddleware(jwtSecret, blacklistRepo))
 	{
-		unit.POST("", controller.CreateCustomer)
-		unit.GET("", controller.GetCustomersWithPagination)
-		unit.GET("/:id", controller.GetCustomerById)
-		unit.PUT("/:id", controller.UpdateCustomer)
-		unit.DELETE("/:id", controller.DeleteCustomer)
+		customer.POST("", controller.CreateCustomer)
+		customer.GET("", controller.GetCustomersWithPagination)
+		customer.GET("/:id", controller.GetCustomerById)
+		customer.PUT("/:id", controller.UpdateCustomer)
+		customer.DELETE("/:id", controller.DeleteCustomer)
 	}
 }

@@ -13,12 +13,12 @@ func registerSupplierRoutes(
 	jwtSecret string,
 	blacklistRepo repository.BlacklistRepository,
 ) {
-	roles := router.Group("/suppliers", middleware.AuthMiddleware(jwtSecret, blacklistRepo))
+	supplier := router.Group("/suppliers", middleware.AuthMiddleware(jwtSecret, blacklistRepo))
 	{
-		roles.POST("", controller.CreateSupplier)
-		roles.GET("", controller.GetSuppliersWithPagination)
-		roles.GET("/:id", controller.GetSupplierById)
-		roles.PUT("/:id", controller.UpdateSupplier)
-		roles.DELETE("/:id", controller.DeleteSupplier)
+		supplier.POST("", controller.CreateSupplier)
+		supplier.GET("", controller.GetSuppliersWithPagination)
+		supplier.GET("/:id", controller.GetSupplierById)
+		supplier.PUT("/:id", controller.UpdateSupplier)
+		supplier.DELETE("/:id", controller.DeleteSupplier)
 	}
 }
