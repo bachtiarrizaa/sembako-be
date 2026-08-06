@@ -19,21 +19,19 @@ type AuthController struct {
 	authUsecase          *usecase.AuthUsecase
 	passwordResetUsecase *usecase.PasswordResetUsecase
 	validator            *validator.Validate
-	isProduction         bool
 	refreshTokenTTL      time.Duration
 }
 
 func NewAuthController(
 	authUsecase *usecase.AuthUsecase,
 	passwordResetUsecase *usecase.PasswordResetUsecase,
-	isProduction bool,
+	_ bool,
 	refreshTokenTTL time.Duration,
 ) *AuthController {
 	return &AuthController{
 		authUsecase:          authUsecase,
 		passwordResetUsecase: passwordResetUsecase,
 		validator:            validator.New(),
-		isProduction:         isProduction,
 		refreshTokenTTL:      refreshTokenTTL,
 	}
 }
@@ -138,27 +136,27 @@ func (ctrl *AuthController) ResetPassword(c *gin.Context) {
 
 func (ctrl *AuthController) setRefreshCookie(c *gin.Context, rawToken string) {
 	maxAge := int(ctrl.refreshTokenTTL.Seconds())
-	c.SetSameSite(http.SameSiteStrictMode)
+	c.SetSameSite(http.SameSiteNoneMode)
 	c.SetCookie(
 		refreshTokenCookieName,
 		rawToken,
 		maxAge,
 		"/api/auth",
 		"",
-		ctrl.isProduction,
+		true,
 		true,
 	)
 }
 
 func (ctrl *AuthController) clearRefreshCookie(c *gin.Context) {
-	c.SetSameSite(http.SameSiteStrictMode)
+	c.SetSameSite(http.SameSiteNoneMode)
 	c.SetCookie(
 		refreshTokenCookieName,
 		"",
 		-1,
 		"/api/auth",
 		"",
-		ctrl.isProduction,
+		true,
 		true,
 	)
 }
