@@ -20,13 +20,12 @@ func registerProductRoutes(
 		product.GET("/:id", controller.GetProductByID)
 		product.PUT("/:id", controller.UpdateProduct)
 		product.PATCH("/:id/status", controller.UpdateProductStatus)
+		product.DELETE("/:id", controller.DeleteProduct)
 		
 		// Unit management
 		product.POST("/:id/units", controller.AddProductUnit)
 		product.PUT("/:id/units/:unitId", controller.UpdateProductUnit)
 		product.PATCH("/:id/units/:unitId/status", controller.UpdateProductUnitStatus)
 		product.DELETE("/:id/units/:unitId", controller.DeleteProductUnit)
-
-		product.DELETE("/:id", controller.DeleteProduct)
 	}
 }
