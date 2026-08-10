@@ -19,6 +19,7 @@ func registerSupplierRoutes(
 		supplier.GET("", controller.GetSuppliersWithPagination)
 		supplier.GET("/:id", controller.GetSupplierById)
 		supplier.PUT("/:id", controller.UpdateSupplier)
+		supplier.PATCH("/:id/status", controller.UpdateStatus)
 		supplier.DELETE("/:id", controller.DeleteSupplier)
 	}
 }
