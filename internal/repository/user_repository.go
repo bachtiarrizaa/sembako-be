@@ -63,7 +63,7 @@ func (r *userRepository) FindByUsername(ctx context.Context, username string) (*
 }
 
 func (r *userRepository) Update(ctx context.Context, user *entity.User) error {
-	if err := r.db.WithContext(ctx).Save(user).Error; err != nil {
+	if err := r.db.WithContext(ctx).Omit("Role").Save(user).Error; err != nil {
 		return err
 	}
 	return r.db.WithContext(ctx).Preload("Role").First(user, "id = ?", user.ID).Error

@@ -25,7 +25,7 @@ func NewUserController(userUsecase *usecase.UserUsecase) *UserController {
 	}
 }
 
-func (ctrl *UserController) GetMe(c *gin.Context) {
+func (ctrl *UserController) GetProfileMe(c *gin.Context) {
 	userID, ok := middleware.GetUserID(c)
 	if !ok {
 		utils.ErrorResponse(c, http.StatusUnauthorized, "unauthorized")
@@ -121,6 +121,32 @@ func (ctrl *UserController) UpdateUser(c *gin.Context) {
 	}
 
 	utils.SuccessResponse(c, http.StatusOK, "user updated successfully", res)
+}
+
+func (c *UserController) UpdateStatus(ctx *gin.Context) {
+	idParam := ctx.Param("id")
+	id, err := uuid.Parse(idParam)
+	if err != nil {
+		utils.ErrorResponse(ctx, http.StatusBadRequest, "invalid id")
+		return
+	}
+
+	var req model.UpdateStatusUserRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		utils.ErrorResponse(ctx, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	if err := c.validator.Struct(req); err != nil {
+		utils.ErrorResponse(ctx, http.StatusUnprocessableEntity, utils.FormatValidationError(err))
+		return
+	}
+
+	res, err := c.userUsecase.UpdateStatus(ctx.Request.Context(), id, req)
+	if err != nil {
+		utils.HandleError(ctx, err)
+		return
+	}
+	utils.SuccessResponse(ctx, http.StatusOK, "user status updated successfully", res)
 }
 
 func (ctrl *UserController) DeleteUser(c *gin.Context) {
