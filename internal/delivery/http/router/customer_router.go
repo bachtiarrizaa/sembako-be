@@ -19,6 +19,7 @@ func registerCustomerRoutes(
 		customer.GET("", controller.GetCustomersWithPagination)
 		customer.GET("/:id", controller.GetCustomerById)
 		customer.PUT("/:id", controller.UpdateCustomer)
+		customer.PATCH("/:id/status", controller.UpdateStatus)
 		customer.DELETE("/:id", controller.DeleteCustomer)
 	}
 }
