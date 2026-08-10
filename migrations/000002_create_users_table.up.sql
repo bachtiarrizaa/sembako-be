@@ -1,9 +1,10 @@
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
+CREATE EXTENSION IF NOT EXISTS citext;
 
 CREATE TABLE users (
     id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name          VARCHAR(150) NOT NULL,
-    email         VARCHAR(150) NOT NULL,
+    email         CITEXT NOT NULL,
     username      VARCHAR(100),
     password_hash VARCHAR(255) NOT NULL,
     role_id       UUID NOT NULL REFERENCES roles(id),
