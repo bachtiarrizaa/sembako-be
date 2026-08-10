@@ -54,6 +54,7 @@ func (r *productRepositoryImpl) FindProducts(ctx context.Context, req model.Pagi
 		Preload("BaseUnit").
 		Preload("Units").
 		Preload("Units.Unit").
+		Order("created_at DESC").
 		Offset(offset).Limit(req.Limit).
 		Find(&products).Error; err != nil {
 		return nil, 0, err

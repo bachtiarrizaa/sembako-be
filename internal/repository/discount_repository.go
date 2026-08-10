@@ -44,7 +44,7 @@ func (r *discountRepositoryImpl) FindDiscounts(ctx context.Context, req model.Pa
 	}
 
 	offset := (req.Page - 1) * req.Limit
-	if err := query.Offset(offset).Limit(req.Limit).Find(&discounts).Error; err != nil {
+	if err := query.Order("created_at DESC").Offset(offset).Limit(req.Limit).Find(&discounts).Error; err != nil {
 		return nil, 0, err
 	}
 

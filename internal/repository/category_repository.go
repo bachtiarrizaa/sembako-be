@@ -45,7 +45,7 @@ func (r *categoryRepositoryImpl) FindCategories(ctx context.Context, req model.P
 	}
 
 	offset := (req.Page - 1) * req.Limit
-	if err := query.Offset(offset).Limit(req.Limit).Find(&categories).Error; err != nil {
+	if err := query.Order("created_at DESC").Offset(offset).Limit(req.Limit).Find(&categories).Error; err != nil {
 		return nil, 0, err
 	}
 	return categories, total, nil
