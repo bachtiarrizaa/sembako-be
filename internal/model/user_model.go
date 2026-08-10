@@ -21,7 +21,10 @@ type UpdateUserRequest struct {
 	Username *string `json:"username" validate:"omitempty,min=2,max=100"`
 	Password *string `json:"password" validate:"omitempty,min=8"`
 	RoleID   string  `json:"roleId" validate:"required,uuid"`
-	IsActive *bool   `json:"isActive" validate:"required"`
+}
+
+type UpdateStatusUserRequest struct {
+	IsActive bool `json:"isActive"`
 }
 
 type UserWithRole struct {

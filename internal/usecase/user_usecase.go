@@ -26,8 +26,8 @@ func NewUserUsecase(userRepo repository.UserRepository, roleRepo repository.Role
 	}
 }
 
-func (uc *UserUsecase) CreateUser(ctx context.Context, req model.CreateUserRequest) (*model.UserResponse, error) {
-	_, err := uc.roleRepo.FindByID(ctx, req.RoleID)
+func (u *UserUsecase) CreateUser(ctx context.Context, req model.CreateUserRequest) (*model.UserResponse, error) {
+	_, err := u.roleRepo.FindByID(ctx, req.RoleID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, errs.NewNotFound("role not found")
@@ -35,13 +35,13 @@ func (uc *UserUsecase) CreateUser(ctx context.Context, req model.CreateUserReque
 		return nil, errs.NewInternal("failed to fetch role data")
 	}
 
-	existingEmail, err := uc.userRepo.FindByEmail(ctx, req.Email)
+	existingEmail, err := u.userRepo.FindByEmail(ctx, req.Email)
 	if err == nil && existingEmail != nil {
 		return nil, errs.NewConflict("email already registered")
 	}
 
 	if req.Username != nil && *req.Username != "" {
-		existingUsername, err := uc.userRepo.FindByUsername(ctx, *req.Username)
+		existingUsername, err := u.userRepo.FindByUsername(ctx, *req.Username)
 		if err == nil && existingUsername != nil {
 			return nil, errs.NewConflict("username already taken")
 		}
@@ -61,55 +61,52 @@ func (uc *UserUsecase) CreateUser(ctx context.Context, req model.CreateUserReque
 		IsActive:     *req.IsActive,
 	}
 
-	if err := uc.userRepo.Create(ctx, user); err != nil {
+	if err := u.userRepo.Create(ctx, user); err != nil {
 		return nil, errs.NewInternal("failed to create user")
 	}
 
-	resp := model.ToUserResponse(user)
-	return &resp, nil
+	return toUserResponse(user), nil
 }
 
-func (uc *UserUsecase) GetUsersWithPagination(ctx context.Context, req model.PaginationRequest) ([]model.UserResponse, utils.Pagination, error) {
-	users, total, err := uc.userRepo.FindUsers(ctx, req)
+func (u *UserUsecase) GetUsersWithPagination(ctx context.Context, req model.PaginationRequest) ([]model.UserResponse, utils.Pagination, error) {
+	users, total, err := u.userRepo.FindUsers(ctx, req)
 	if err != nil {
 		return nil, utils.Pagination{}, errs.NewInternal("failed to fetch users")
 	}
 
 	res := []model.UserResponse{}
-	for _, u := range users {
-		res = append(res, model.ToUserResponse(&u))
+	for _, usr := range users {
+		res = append(res, *toUserResponse(&usr))
 	}
 
 	pagination := utils.BuildPagination(req.Page, req.Limit, total)
 	return res, pagination, nil
 }
 
-func (uc *UserUsecase) GetUserByID(ctx context.Context, id uuid.UUID) (*model.UserResponse, error) {
-	user, err := uc.userRepo.FindByID(ctx, id)
+func (u *UserUsecase) GetUserByID(ctx context.Context, id uuid.UUID) (*model.UserResponse, error) {
+	user, err := u.userRepo.FindByID(ctx, id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, errs.NewNotFound("user not found")
 		}
 		return nil, errs.NewInternal("failed to fetch user data")
 	}
-	resp := model.ToUserResponse(user)
-	return &resp, nil
+	return toUserResponse(user), nil
 }
 
-func (uc *UserUsecase) GetMe(ctx context.Context, userID uuid.UUID) (*model.UserResponse, error) {
-	user, err := uc.userRepo.FindByID(ctx, userID)
+func (u *UserUsecase) GetMe(ctx context.Context, userID uuid.UUID) (*model.UserResponse, error) {
+	user, err := u.userRepo.FindByID(ctx, userID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, errs.NewNotFound("user not found")
 		}
 		return nil, errs.NewInternal("failed to fetch user data")
 	}
-	resp := model.ToUserResponse(user)
-	return &resp, nil
+	return toUserResponse(user), nil
 }
 
-func (uc *UserUsecase) UpdateUser(ctx context.Context, id uuid.UUID, req model.UpdateUserRequest) (*model.UserResponse, error) {
-	user, err := uc.userRepo.FindByID(ctx, id)
+func (u *UserUsecase) UpdateUser(ctx context.Context, id uuid.UUID, req model.UpdateUserRequest) (*model.UserResponse, error) {
+	user, err := u.userRepo.FindByID(ctx, id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, errs.NewNotFound("user not found")
@@ -117,7 +114,7 @@ func (uc *UserUsecase) UpdateUser(ctx context.Context, id uuid.UUID, req model.U
 		return nil, errs.NewInternal("failed to fetch user data")
 	}
 
-	_, err = uc.roleRepo.FindByID(ctx, req.RoleID)
+	_, err = u.roleRepo.FindByID(ctx, req.RoleID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, errs.NewNotFound("role not found")
@@ -126,7 +123,7 @@ func (uc *UserUsecase) UpdateUser(ctx context.Context, id uuid.UUID, req model.U
 	}
 
 	if req.Email != user.Email {
-		existingEmail, err := uc.userRepo.FindByEmail(ctx, req.Email)
+		existingEmail, err := u.userRepo.FindByEmail(ctx, req.Email)
 		if err == nil && existingEmail != nil {
 			return nil, errs.NewConflict("email already registered")
 		}
@@ -134,7 +131,7 @@ func (uc *UserUsecase) UpdateUser(ctx context.Context, id uuid.UUID, req model.U
 
 	if req.Username != nil && *req.Username != "" {
 		if user.Username == nil || *req.Username != *user.Username {
-			existingUsername, err := uc.userRepo.FindByUsername(ctx, *req.Username)
+			existingUsername, err := u.userRepo.FindByUsername(ctx, *req.Username)
 			if err == nil && existingUsername != nil {
 				return nil, errs.NewConflict("username already taken")
 			}
@@ -145,7 +142,6 @@ func (uc *UserUsecase) UpdateUser(ctx context.Context, id uuid.UUID, req model.U
 	user.Email = req.Email
 	user.Username = req.Username
 	user.RoleID = req.RoleID
-	user.IsActive = *req.IsActive
 
 	if req.Password != nil && *req.Password != "" {
 		hashedPassword, err := utils.HashPassword(*req.Password)
@@ -155,16 +151,33 @@ func (uc *UserUsecase) UpdateUser(ctx context.Context, id uuid.UUID, req model.U
 		user.PasswordHash = hashedPassword
 	}
 
-	if err := uc.userRepo.Update(ctx, user); err != nil {
+	if err := u.userRepo.Update(ctx, user); err != nil {
 		return nil, errs.NewInternal("failed to update user")
 	}
 
-	resp := model.ToUserResponse(user)
-	return &resp, nil
+	return toUserResponse(user), nil
 }
 
-func (uc *UserUsecase) DeleteUser(ctx context.Context, id uuid.UUID) error {
-	_, err := uc.userRepo.FindByID(ctx, id)
+func (u *UserUsecase) UpdateStatus(ctx context.Context, id uuid.UUID, req model.UpdateStatusUserRequest) (*model.UserResponse, error) {
+	user, err := u.userRepo.FindByID(ctx, id)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errs.NewNotFound("user not found")
+		}
+		return nil, errs.NewInternal("failed to fetch user data")
+	}
+
+	user.IsActive = req.IsActive
+
+	if err := u.userRepo.Update(ctx, user); err != nil {
+		return nil, errs.NewInternal("failed to update user status")
+	}
+
+	return toUserResponse(user), nil
+}
+
+func (u *UserUsecase) DeleteUser(ctx context.Context, id uuid.UUID) error {
+	_, err := u.userRepo.FindByID(ctx, id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return errs.NewNotFound("user not found")
@@ -172,8 +185,24 @@ func (uc *UserUsecase) DeleteUser(ctx context.Context, id uuid.UUID) error {
 		return errs.NewInternal("failed to fetch user data")
 	}
 
-	if err := uc.userRepo.Delete(ctx, id); err != nil {
+	if err := u.userRepo.Delete(ctx, id); err != nil {
 		return errs.NewInternal("failed to delete user")
 	}
 	return nil
+}
+
+func toUserResponse(u *entity.User) *model.UserResponse {
+	return &model.UserResponse{
+		ID:       u.ID,
+		Name:     u.Name,
+		Email:    u.Email,
+		Username: u.Username,
+		Role: model.UserWithRole{
+			ID:   u.Role.ID,
+			Name: u.Role.Name,
+		},
+		IsActive:  u.IsActive,
+		CreatedAt: u.CreatedAt,
+		UpdatedAt: u.UpdatedAt,
+	}
 }

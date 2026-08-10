@@ -17,8 +17,10 @@ func registerUserRoutes(
 	{
 		user.POST("", controller.CreateUser)
 		user.GET("", controller.GetUsersWithPagination)
+		user.GET("/me", controller.GetProfileMe)
 		user.GET("/:id", controller.GetUserByID)
 		user.PUT("/:id", controller.UpdateUser)
+		user.PATCH("/:id/status", controller.UpdateStatus)
 		user.DELETE("/:id", controller.DeleteUser)
 	}
 }
