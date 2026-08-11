@@ -1,6 +1,9 @@
 package errs
 
-import "net/http"
+import (
+	"errors"
+	"net/http"
+)
 
 type AppError struct {
 	Code    int
@@ -36,8 +39,10 @@ func NewInternal(message string) *AppError {
 }
 
 func ToAppError(err error) *AppError {
-	if appErr, ok := err.(*AppError); ok {
+	var appErr *AppError
+	if errors.As(err, &appErr) {
 		return appErr
 	}
 	return NewInternal("internal server error")
 }
+
