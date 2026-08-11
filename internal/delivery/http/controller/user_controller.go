@@ -2,6 +2,7 @@ package controller
 
 import (
 	"net/http"
+	"path/filepath"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
@@ -16,111 +17,156 @@ import (
 type UserController struct {
 	userUsecase *usecase.UserUsecase
 	validator   *validator.Validate
+	uploadDir   string
 }
 
-func NewUserController(userUsecase *usecase.UserUsecase) *UserController {
+func NewUserController(userUsecase *usecase.UserUsecase, uploadDir string) *UserController {
 	return &UserController{
 		userUsecase: userUsecase,
 		validator:   validator.New(),
+		uploadDir:   uploadDir,
 	}
 }
 
-func (ctrl *UserController) GetProfileMe(c *gin.Context) {
-	userID, ok := middleware.GetUserID(c)
+func (c *UserController) GetProfileMe(ctx *gin.Context) {
+	userID, ok := middleware.GetUserID(ctx)
 	if !ok {
-		utils.ErrorResponse(c, http.StatusUnauthorized, "unauthorized")
+		utils.ErrorResponse(ctx, http.StatusUnauthorized, "unauthorized")
 		return
 	}
 
-	res, err := ctrl.userUsecase.GetMe(c.Request.Context(), userID)
+	res, err := c.userUsecase.GetMe(ctx.Request.Context(), userID)
 	if err != nil {
-		handleError(c, err)
+		utils.HandleError(ctx, err)
 		return
 	}
 
-	utils.SuccessResponse(c, http.StatusOK, "profile fetched successfully", res)
+	utils.SuccessResponse(ctx, http.StatusOK, "profile fetched successfully", res)
 }
 
-func (ctrl *UserController) CreateUser(c *gin.Context) {
+func (c *UserController) UpdateProfile(ctx *gin.Context) {
+	userID, ok := middleware.GetUserID(ctx)
+	if !ok {
+		utils.ErrorResponse(ctx, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+
+	var req model.UpdateProfileRequest
+	if err := ctx.ShouldBind(&req); err != nil {
+		utils.ErrorResponse(ctx, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	if err := c.validator.Struct(req); err != nil {
+		utils.ErrorResponse(ctx, http.StatusUnprocessableEntity, utils.FormatValidationError(err))
+		return
+	}
+
+	uploadCfg := utils.DefaultImageConfig(filepath.Join(c.uploadDir, "profiles"))
+	result, err := utils.HandleFileUpload(ctx, uploadCfg)
+	if err != nil {
+		if uploadErr, ok := err.(*utils.UploadError); ok {
+			utils.ErrorResponse(ctx, http.StatusBadRequest, uploadErr.Message)
+			return
+		}
+		utils.ErrorResponse(ctx, http.StatusInternalServerError, "failed to process uploaded file")
+		return
+	}
+
+	var imagePath *string
+	if result != nil {
+		imagePath = &result.FilePath
+	}
+
+	res, err := c.userUsecase.UpdateProfile(ctx.Request.Context(), userID, req, imagePath)
+	if err != nil {
+		utils.HandleError(ctx, err)
+		return
+	}
+
+	utils.SuccessResponse(ctx, http.StatusOK, "profile updated successfully", res)
+}
+
+func (c *UserController) CreateUser(ctx *gin.Context) {
 	var req model.CreateUserRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		utils.ErrorResponse(c, http.StatusBadRequest, "invalid request body")
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		utils.ErrorResponse(ctx, http.StatusBadRequest, "invalid request body")
 		return
 	}
 
-	if err := ctrl.validator.Struct(req); err != nil {
-		utils.ErrorResponse(c, http.StatusUnprocessableEntity, utils.FormatValidationError(err))
+	if err := c.validator.Struct(req); err != nil {
+		utils.ErrorResponse(ctx, http.StatusUnprocessableEntity, utils.FormatValidationError(err))
 		return
 	}
 
-	res, err := ctrl.userUsecase.CreateUser(c.Request.Context(), req)
+	res, err := c.userUsecase.CreateUser(ctx.Request.Context(), req)
 	if err != nil {
-		handleError(c, err)
+		utils.HandleError(ctx, err)
 		return
 	}
 
-	utils.SuccessResponse(c, http.StatusCreated, "user created successfully", res)
+	utils.SuccessResponse(ctx, http.StatusCreated, "user created successfully", res)
 }
 
-func (ctrl *UserController) GetUsersWithPagination(c *gin.Context) {
-	pagReq, err := utils.ParsePaginationQuery(c)
+func (c *UserController) GetUsersWithPagination(ctx *gin.Context) {
+	pagReq, err := utils.ParsePaginationQuery(ctx)
 	if err != nil {
-		utils.ErrorResponse(c, http.StatusBadRequest, "invalid query params")
+		utils.ErrorResponse(ctx, http.StatusBadRequest, "invalid query params")
 		return
 	}
 
-	res, pagination, err := ctrl.userUsecase.GetUsersWithPagination(c.Request.Context(), pagReq)
+	res, pagination, err := c.userUsecase.GetUsersWithPagination(ctx.Request.Context(), pagReq)
 	if err != nil {
-		handleError(c, err)
+		utils.HandleError(ctx, err)
 		return
 	}
 
-	utils.SuccessResponseWithPagination(c, http.StatusOK, "users fetched successfully", res, pagination)
+	utils.SuccessResponseWithPagination(ctx, http.StatusOK, "users fetched successfully", res, pagination)
 }
 
-func (ctrl *UserController) GetUserByID(c *gin.Context) {
-	idStr := c.Param("id")
+func (c *UserController) GetUserByID(ctx *gin.Context) {
+	idStr := ctx.Param("id")
 	id, err := uuid.Parse(idStr)
 	if err != nil {
-		utils.ErrorResponse(c, http.StatusBadRequest, "invalid id format")
+		utils.ErrorResponse(ctx, http.StatusBadRequest, "invalid id format")
 		return
 	}
 
-	res, err := ctrl.userUsecase.GetUserByID(c.Request.Context(), id)
+	res, err := c.userUsecase.GetUserByID(ctx.Request.Context(), id)
 	if err != nil {
-		handleError(c, err)
+		utils.HandleError(ctx, err)
 		return
 	}
 
-	utils.SuccessResponse(c, http.StatusOK, "user fetched successfully", res)
+	utils.SuccessResponse(ctx, http.StatusOK, "user fetched successfully", res)
 }
 
-func (ctrl *UserController) UpdateUser(c *gin.Context) {
-	idStr := c.Param("id")
+func (c *UserController) UpdateUser(ctx *gin.Context) {
+	idStr := ctx.Param("id")
 	id, err := uuid.Parse(idStr)
 	if err != nil {
-		utils.ErrorResponse(c, http.StatusBadRequest, "invalid id format")
+		utils.ErrorResponse(ctx, http.StatusBadRequest, "invalid id format")
 		return
 	}
 
 	var req model.UpdateUserRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		utils.ErrorResponse(c, http.StatusBadRequest, "invalid request body")
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		utils.ErrorResponse(ctx, http.StatusBadRequest, "invalid request body")
 		return
 	}
 
-	if err := ctrl.validator.Struct(req); err != nil {
-		utils.ErrorResponse(c, http.StatusUnprocessableEntity, utils.FormatValidationError(err))
+	if err := c.validator.Struct(req); err != nil {
+		utils.ErrorResponse(ctx, http.StatusUnprocessableEntity, utils.FormatValidationError(err))
 		return
 	}
 
-	res, err := ctrl.userUsecase.UpdateUser(c.Request.Context(), id, req)
+	res, err := c.userUsecase.UpdateUser(ctx.Request.Context(), id, req)
 	if err != nil {
-		handleError(c, err)
+		utils.HandleError(ctx, err)
 		return
 	}
 
-	utils.SuccessResponse(c, http.StatusOK, "user updated successfully", res)
+	utils.SuccessResponse(ctx, http.StatusOK, "user updated successfully", res)
 }
 
 func (c *UserController) UpdateStatus(ctx *gin.Context) {
@@ -149,18 +195,18 @@ func (c *UserController) UpdateStatus(ctx *gin.Context) {
 	utils.SuccessResponse(ctx, http.StatusOK, "user status updated successfully", res)
 }
 
-func (ctrl *UserController) DeleteUser(c *gin.Context) {
-	idStr := c.Param("id")
+func (c *UserController) DeleteUser(ctx *gin.Context) {
+	idStr := ctx.Param("id")
 	id, err := uuid.Parse(idStr)
 	if err != nil {
-		utils.ErrorResponse(c, http.StatusBadRequest, "invalid id format")
+		utils.ErrorResponse(ctx, http.StatusBadRequest, "invalid id format")
 		return
 	}
 
-	if err := ctrl.userUsecase.DeleteUser(c.Request.Context(), id); err != nil {
-		handleError(c, err)
+	if err := c.userUsecase.DeleteUser(ctx.Request.Context(), id); err != nil {
+		utils.HandleError(ctx, err)
 		return
 	}
 
-	utils.SuccessResponse(c, http.StatusOK, "user deleted successfully", nil)
+	utils.SuccessResponse(ctx, http.StatusOK, "user deleted successfully", nil)
 }

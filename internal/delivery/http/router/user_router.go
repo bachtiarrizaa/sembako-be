@@ -18,6 +18,7 @@ func registerUserRoutes(
 		user.POST("", controller.CreateUser)
 		user.GET("", controller.GetUsersWithPagination)
 		user.GET("/me", controller.GetProfileMe)
+		user.PATCH("/me", controller.UpdateProfile)
 		user.GET("/:id", controller.GetUserByID)
 		user.PUT("/:id", controller.UpdateUser)
 		user.PATCH("/:id/status", controller.UpdateStatus)

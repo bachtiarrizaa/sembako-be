@@ -70,7 +70,8 @@ func (u *UserUsecase) CreateUser(ctx context.Context, req model.CreateUserReques
 		return nil, errs.NewInternal("failed to create user")
 	}
 
-	return toUserResponse(user), nil
+	res := model.ToUserResponse(user)
+	return &res, nil
 }
 
 func (u *UserUsecase) GetUsersWithPagination(ctx context.Context, req model.PaginationRequest) ([]model.UserResponse, utils.Pagination, error) {
@@ -81,7 +82,7 @@ func (u *UserUsecase) GetUsersWithPagination(ctx context.Context, req model.Pagi
 
 	res := []model.UserResponse{}
 	for _, usr := range users {
-		res = append(res, *toUserResponse(&usr))
+		res = append(res, model.ToUserResponse(&usr))
 	}
 
 	pagination := utils.BuildPagination(req.Page, req.Limit, total)
@@ -96,7 +97,8 @@ func (u *UserUsecase) GetUserByID(ctx context.Context, id uuid.UUID) (*model.Use
 		}
 		return nil, errs.NewInternal("failed to fetch user data")
 	}
-	return toUserResponse(user), nil
+	res := model.ToUserResponse(user)
+	return &res, nil
 }
 
 func (u *UserUsecase) GetMe(ctx context.Context, userID uuid.UUID) (*model.UserResponse, error) {
@@ -107,7 +109,8 @@ func (u *UserUsecase) GetMe(ctx context.Context, userID uuid.UUID) (*model.UserR
 		}
 		return nil, errs.NewInternal("failed to fetch user data")
 	}
-	return toUserResponse(user), nil
+	res := model.ToUserResponse(user)
+	return &res, nil
 }
 
 func (u *UserUsecase) UpdateUser(ctx context.Context, id uuid.UUID, req model.UpdateUserRequest) (*model.UserResponse, error) {
@@ -160,7 +163,8 @@ func (u *UserUsecase) UpdateUser(ctx context.Context, id uuid.UUID, req model.Up
 		return nil, errs.NewInternal("failed to update user")
 	}
 
-	return toUserResponse(user), nil
+	res := model.ToUserResponse(user)
+	return &res, nil
 }
 
 func (u *UserUsecase) UpdateStatus(ctx context.Context, id uuid.UUID, req model.UpdateStatusUserRequest) (*model.UserResponse, error) {
@@ -178,7 +182,50 @@ func (u *UserUsecase) UpdateStatus(ctx context.Context, id uuid.UUID, req model.
 		return nil, errs.NewInternal("failed to update user status")
 	}
 
-	return toUserResponse(user), nil
+	res := model.ToUserResponse(user)
+	return &res, nil
+}
+
+func (u *UserUsecase) UpdateProfile(ctx context.Context, id uuid.UUID, req model.UpdateProfileRequest, imagePath *string) (*model.UserResponse, error) {
+	user, err := u.userRepo.FindByID(ctx, id)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errs.NewNotFound("user not found")
+		}
+		return nil, errs.NewInternal("failed to fetch user data")
+	}
+
+	if req.Name != nil && *req.Name != "" {
+		user.Name = *req.Name
+	}
+
+	if req.Username != nil {
+		if *req.Username != "" && (user.Username == nil || *req.Username != *user.Username) {
+			existingUsername, err := u.userRepo.FindByUsername(ctx, *req.Username)
+			if err == nil && existingUsername != nil {
+				return nil, errs.NewConflict("username already taken")
+			}
+		}
+		if *req.Username == "" {
+			user.Username = nil
+		} else {
+			user.Username = req.Username
+		}
+	}
+
+	if imagePath != nil {
+		if user.Image != nil && *user.Image != "" {
+			utils.DeleteFile(*user.Image)
+		}
+		user.Image = imagePath
+	}
+
+	if err := u.userRepo.Update(ctx, user); err != nil {
+		return nil, errs.NewInternal("failed to update user profile")
+	}
+
+	res := model.ToUserResponse(user)
+	return &res, nil
 }
 
 func (u *UserUsecase) DeleteUser(ctx context.Context, id uuid.UUID) error {
@@ -194,20 +241,4 @@ func (u *UserUsecase) DeleteUser(ctx context.Context, id uuid.UUID) error {
 		return errs.NewInternal("failed to delete user")
 	}
 	return nil
-}
-
-func toUserResponse(u *entity.User) *model.UserResponse {
-	return &model.UserResponse{
-		ID:       u.ID,
-		Name:     u.Name,
-		Email:    u.Email,
-		Username: u.Username,
-		Role: model.UserWithRole{
-			ID:   u.Role.ID,
-			Name: u.Role.Name,
-		},
-		IsActive:  u.IsActive,
-		CreatedAt: u.CreatedAt,
-		UpdatedAt: u.UpdatedAt,
-	}
 }

@@ -29,6 +29,8 @@ type Config struct {
 	BrevoSenderName         string
 	FrontendResetUrl        string
 	ResetTokenExpireMinutes int
+
+	UploadDir string
 }
 
 func LoadConfig() *Config {
@@ -71,6 +73,8 @@ func LoadConfig() *Config {
 		BrevoSenderName:         getEnv("BREVO_SENDER_NAME", "Sembako App"),
 		FrontendResetUrl:        getEnv("FRONTEND_RESET_URL", "http://localhost:3000/reset-password"),
 		ResetTokenExpireMinutes: resetExpire,
+
+		UploadDir: getEnv("UPLOAD_DIR", "./uploads"),
 	}
 }
 

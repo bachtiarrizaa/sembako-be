@@ -62,7 +62,7 @@ func InitializeApp(cfg *config.Config) (*gin.Engine, error) {
 	authController := controller.NewAuthController(authUsecase, passwordResetUsecase, isProduction, refreshTTL)
 
 	userUsecase := usecase.NewUserUsecase(userRepo, roleRepo)
-	userController := controller.NewUserController(userUsecase)
+	userController := controller.NewUserController(userUsecase, cfg.UploadDir)
 
 	categoryRepo := repository.NewCategoryRepository(db)
 	categoryUsecase := usecase.NewCategoryUsecase(categoryRepo)
@@ -90,6 +90,7 @@ func InitializeApp(cfg *config.Config) (*gin.Engine, error) {
 	discountController := controller.NewDiscountController(discountUsecase)
 
 	app := gin.Default()
+	app.Static("/uploads", cfg.UploadDir)
 	app.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"http://localhost:3000"},
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},

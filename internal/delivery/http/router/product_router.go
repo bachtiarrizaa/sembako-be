@@ -21,7 +21,7 @@ func registerProductRoutes(
 		product.PUT("/:id", controller.UpdateProduct)
 		product.PATCH("/:id/status", controller.UpdateProductStatus)
 		product.DELETE("/:id", controller.DeleteProduct)
-		
+
 		// Unit management
 		product.POST("/:id/units", controller.AddProductUnit)
 		product.PUT("/:id/units/:unitId", controller.UpdateProductUnit)
