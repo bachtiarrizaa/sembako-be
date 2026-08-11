@@ -12,7 +12,7 @@ type CreateUserRequest struct {
 	Username *string `json:"username" validate:"omitempty,min=2,max=100"`
 	Password string  `json:"password" validate:"required,min=8"`
 	RoleID   string  `json:"roleId" validate:"required,uuid"`
-	IsActive *bool   `json:"isActive" validate:"required"`
+	IsActive *bool   `json:"isActive" validate:"omitempty"`
 }
 
 type UpdateUserRequest struct {

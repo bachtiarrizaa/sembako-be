@@ -52,13 +52,18 @@ func (u *UserUsecase) CreateUser(ctx context.Context, req model.CreateUserReques
 		return nil, errs.NewInternal("failed to hash password")
 	}
 
+	isActive := true
+	if req.IsActive != nil {
+		isActive = *req.IsActive
+	}
+
 	user := &entity.User{
 		Name:         req.Name,
 		Email:        req.Email,
 		Username:     req.Username,
 		PasswordHash: hashedPassword,
 		RoleID:       req.RoleID,
-		IsActive:     *req.IsActive,
+		IsActive:     isActive,
 	}
 
 	if err := u.userRepo.Create(ctx, user); err != nil {
