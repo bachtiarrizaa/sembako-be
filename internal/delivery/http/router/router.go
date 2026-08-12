@@ -5,6 +5,7 @@ import (
 
 	"github.com/bachtiarrizaa/sembako-be/internal/delivery/http/controller"
 	"github.com/bachtiarrizaa/sembako-be/internal/repository"
+	"github.com/bachtiarrizaa/sembako-be/internal/usecase"
 )
 
 func Setup(
@@ -20,24 +21,28 @@ func Setup(
 	customerController *controller.CustomerController,
 	productController *controller.ProductController,
 	discountController *controller.DiscountController,
+	permissionController *controller.PermissionController,
+	permissionUsecase *usecase.PermissionUsecase,
 ) {
 	api := router.Group("/api")
 
 	registerAuthRoutes(api, authController, jwtSecret, blacklistRepo)
 
-	registerRoleRoutes(api, roleController, jwtSecret, blacklistRepo)
+	registerRoleRoutes(api, roleController, permissionUsecase, jwtSecret, blacklistRepo)
 
-	registerUserRoutes(api, userController, jwtSecret, blacklistRepo)
+	registerUserRoutes(api, userController, permissionUsecase, jwtSecret, blacklistRepo)
 
-	registerCategoryRoutes(api, categoryController, jwtSecret, blacklistRepo)
+	registerCategoryRoutes(api, categoryController, permissionUsecase, jwtSecret, blacklistRepo)
 
-	registerSupplierRoutes(api, supplierController, jwtSecret, blacklistRepo)
+	registerSupplierRoutes(api, supplierController, permissionUsecase, jwtSecret, blacklistRepo)
 
-	registerUnitRoutes(api, unitController, jwtSecret, blacklistRepo)
+	registerUnitRoutes(api, unitController, permissionUsecase, jwtSecret, blacklistRepo)
 
-	registerCustomerRoutes(api, customerController, jwtSecret, blacklistRepo)
+	registerCustomerRoutes(api, customerController, permissionUsecase, jwtSecret, blacklistRepo)
 
-	registerProductRoutes(api, productController, jwtSecret, blacklistRepo)
+	registerProductRoutes(api, productController, permissionUsecase, jwtSecret, blacklistRepo)
 
-	registerDiscountRoutes(api, discountController, jwtSecret, blacklistRepo)
+	registerDiscountRoutes(api, discountController, permissionUsecase, jwtSecret, blacklistRepo)
+
+	registerPermissionRoutes(api, permissionController, jwtSecret, blacklistRepo)
 }

@@ -19,6 +19,7 @@ type AuthUsecase struct {
 	userRepo         repository.UserRepository
 	refreshTokenRepo repository.RefreshTokenRepository
 	blacklistRepo    repository.BlacklistRepository
+	permissionRepo   repository.PermissionRepository
 	jwtAccessSecret  string
 	jwtAccessTTL     time.Duration
 	jwtRefreshTTL    time.Duration
@@ -28,6 +29,7 @@ func NewAuthUsecase(
 	userRepo repository.UserRepository,
 	refreshTokenRepo repository.RefreshTokenRepository,
 	blacklistRepo repository.BlacklistRepository,
+	permissionRepo repository.PermissionRepository,
 	jwtAccessSecret string,
 	jwtAccessTTL time.Duration,
 	jwtRefreshTTL time.Duration,
@@ -36,6 +38,7 @@ func NewAuthUsecase(
 		userRepo:         userRepo,
 		refreshTokenRepo: refreshTokenRepo,
 		blacklistRepo:    blacklistRepo,
+		permissionRepo:   permissionRepo,
 		jwtAccessSecret:  jwtAccessSecret,
 		jwtAccessTTL:     jwtAccessTTL,
 		jwtRefreshTTL:    jwtRefreshTTL,
@@ -88,10 +91,16 @@ func (uc *AuthUsecase) Login(ctx context.Context, req model.LoginRequest) (*Logi
 		return nil, errs.NewInternal("failed to store refresh token")
 	}
 
+	rolePermissions, err := uc.permissionRepo.GetPermissionsByRoleID(ctx, user.RoleID)
+	if err != nil {
+		return nil, errs.NewInternal("failed to fetch user permissions")
+	}
+
 	return &LoginResult{
 		Response: &model.LoginResponse{
 			AccessToken: accessToken,
 			User:        model.ToUserResponse(user),
+			Permissions: buildMenuTree(rolePermissions),
 		},
 		RefreshToken: rawRefreshToken,
 	}, nil
