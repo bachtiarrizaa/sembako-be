@@ -9,6 +9,7 @@ import (
 	"github.com/bachtiarrizaa/sembako-be/internal/pkg/errs"
 	"github.com/bachtiarrizaa/sembako-be/internal/pkg/utils"
 	"github.com/bachtiarrizaa/sembako-be/internal/repository"
+	"github.com/jackc/pgx/v5/pgconn"
 	"gorm.io/gorm"
 )
 
@@ -30,7 +31,11 @@ func NewProductUsecase(
 	}
 }
 
-func (u *ProductUsecase) CreateProduct(ctx context.Context, req model.CreateProductRequest) (*model.ProductResponse, error) {
+func (u *ProductUsecase) CreateProduct(
+	ctx context.Context,
+	req model.CreateProductRequest,
+	imagePath *string,
+) (*model.ProductResponse, error) {
 	if err := validateProductUnits(req.Units); err != nil {
 		return nil, err
 	}
@@ -60,6 +65,7 @@ func (u *ProductUsecase) CreateProduct(ctx context.Context, req model.CreateProd
 		product = &entity.Product{
 			CategoryID:             req.CategoryID,
 			Name:                   req.Name,
+			Image:                  imagePath,
 			BaseUnitID:             baseUnitID,
 			MinimumStock:           req.MinimumStock,
 			MarginThresholdPercent: req.MarginThresholdPercent,
@@ -88,6 +94,10 @@ func (u *ProductUsecase) CreateProduct(ctx context.Context, req model.CreateProd
 	})
 
 	if txErr != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(txErr, &pgErr) && pgErr.Code == "23505" {
+			return nil, errs.NewConflict("product unit has duplicate unit assignment")
+		}
 		return nil, errs.NewInternal("failed to create product")
 	}
 
@@ -99,7 +109,7 @@ func (u *ProductUsecase) CreateProduct(ctx context.Context, req model.CreateProd
 	return toProductResponse(created), nil
 }
 
-func (u *ProductUsecase) GetProducts(ctx context.Context, req model.PaginationRequest) ([]model.ProductResponse, utils.Pagination, error) {
+func (u *ProductUsecase) GetProducts(ctx context.Context, req model.GetProductsRequest) ([]model.ProductResponse, utils.Pagination, error) {
 	products, total, err := u.productRepo.FindProducts(ctx, req)
 	if err != nil {
 		return nil, utils.Pagination{}, errs.NewInternal("failed to fetch products")
@@ -166,6 +176,32 @@ func (u *ProductUsecase) DeleteProduct(ctx context.Context, id string) error {
 			return errs.NewNotFound("product not found")
 		}
 		return errs.NewInternal("failed to fetch product")
+	}
+
+	// Cek referensi: produk yang sudah dipakai di transaksi/pembelian/stok tidak boleh dihapus,
+	// hanya bisa dinonaktifkan via PATCH /:id/status.
+	hasTransactions, err := u.productRepo.HasTransactionReferences(ctx, id)
+	if err != nil {
+		return errs.NewInternal("failed to check transaction references")
+	}
+	if hasTransactions {
+		return errs.NewConflict("produk sudah digunakan dalam transaksi, gunakan deactivate")
+	}
+
+	hasPurchases, err := u.productRepo.HasPurchaseReferences(ctx, id)
+	if err != nil {
+		return errs.NewInternal("failed to check purchase references")
+	}
+	if hasPurchases {
+		return errs.NewConflict("produk sudah digunakan dalam pembelian, gunakan deactivate")
+	}
+
+	hasMutations, err := u.productRepo.HasStockMutationReferences(ctx, id)
+	if err != nil {
+		return errs.NewInternal("failed to check stock mutation references")
+	}
+	if hasMutations {
+		return errs.NewConflict("produk sudah memiliki riwayat stok, gunakan deactivate")
 	}
 
 	if err := u.productRepo.Delete(ctx, product.ID); err != nil {
@@ -265,7 +301,8 @@ func toProductResponse(product *entity.Product) *model.ProductResponse {
 			ID:   product.Category.ID,
 			Name: product.Category.Name,
 		},
-		Name: product.Name,
+		Name:  product.Name,
+		Image: product.Image,
 		BaseUnit: model.UnitInProductResponse{
 			ID:   product.BaseUnit.ID,
 			Name: product.BaseUnit.Name,
