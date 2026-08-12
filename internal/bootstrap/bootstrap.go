@@ -38,6 +38,7 @@ func InitializeApp(cfg *config.Config) (*gin.Engine, error) {
 	userRepo := repository.NewUserRepository(db)
 	refreshTokenRepo := repository.NewRefreshTokenRepository(db)
 	blacklistRepo := repository.NewBlacklistRepository(db)
+	permissionRepo := repository.NewPermissionRepository(db)
 	passwordResetRepo := repository.NewPasswordResetRepository(db)
 	brevoService := brevo.NewBrevoService(cfg.BrevoApiKey, cfg.BrevoSenderEmail, cfg.BrevoSenderName)
 
@@ -45,6 +46,7 @@ func InitializeApp(cfg *config.Config) (*gin.Engine, error) {
 		userRepo,
 		refreshTokenRepo,
 		blacklistRepo,
+		permissionRepo,
 		cfg.JWTAccessSecret,
 		time.Duration(cfg.JWTAccessExpireMinutes)*time.Minute,
 		refreshTTL,
@@ -89,6 +91,9 @@ func InitializeApp(cfg *config.Config) (*gin.Engine, error) {
 	discountUsecase := usecase.NewDiscountUsecase(discountRepo)
 	discountController := controller.NewDiscountController(discountUsecase)
 
+	permissionUsecase := usecase.NewPermissionUsecase(db, permissionRepo, userRepo)
+	permissionController := controller.NewPermissionController(permissionUsecase)
+
 	app := gin.Default()
 	app.Static("/uploads", cfg.UploadDir)
 	app.Use(cors.New(cors.Config{
@@ -111,6 +116,8 @@ func InitializeApp(cfg *config.Config) (*gin.Engine, error) {
 		customerController,
 		productController,
 		discountController,
+		permissionController,
+		permissionUsecase,
 	)
 
 	return app, nil
