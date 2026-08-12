@@ -1,7 +1,9 @@
 package controller
 
 import (
+	"encoding/json"
 	"net/http"
+	"path/filepath"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
@@ -14,27 +16,51 @@ import (
 type ProductController struct {
 	usecase   *usecase.ProductUsecase
 	validator *validator.Validate
+	uploadDir string
 }
 
-func NewProductController(usecase *usecase.ProductUsecase) *ProductController {
+func NewProductController(usecase *usecase.ProductUsecase, uploadDir string) *ProductController {
 	return &ProductController{
 		usecase:   usecase,
 		validator: validator.New(),
+		uploadDir: uploadDir,
 	}
 }
 
 func (c *ProductController) CreateProduct(ctx *gin.Context) {
 	var req model.CreateProductRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
+	if err := ctx.ShouldBind(&req); err != nil {
 		utils.ErrorResponse(ctx, http.StatusBadRequest, "invalid request body")
 		return
 	}
+
+	if err := json.Unmarshal([]byte(ctx.PostForm("units")), &req.Units); err != nil {
+		utils.ErrorResponse(ctx, http.StatusBadRequest, "invalid units format")
+		return
+	}
+
 	if err := c.validator.Struct(req); err != nil {
 		utils.ErrorResponse(ctx, http.StatusUnprocessableEntity, utils.FormatValidationError(err))
 		return
 	}
 
-	res, err := c.usecase.CreateProduct(ctx.Request.Context(), req)
+	uploadCfg := utils.DefaultImageConfig(filepath.Join(c.uploadDir, "products"))
+	result, err := utils.HandleFileUpload(ctx, uploadCfg)
+	if err != nil {
+		if uploadErr, ok := err.(*utils.UploadError); ok {
+			utils.ErrorResponse(ctx, http.StatusBadRequest, uploadErr.Message)
+			return
+		}
+		utils.ErrorResponse(ctx, http.StatusInternalServerError, "failed to process upload file")
+		return
+	}
+
+	var imagePath *string
+	if result != nil {
+		imagePath = &result.FilePath
+	}
+
+	res, err := c.usecase.CreateProduct(ctx.Request.Context(), req, imagePath)
 	if err != nil {
 		handleError(ctx, err)
 		return
@@ -43,7 +69,7 @@ func (c *ProductController) CreateProduct(ctx *gin.Context) {
 }
 
 func (c *ProductController) GetProducts(ctx *gin.Context) {
-	var req model.PaginationRequest
+	var req model.GetProductsRequest
 	if err := ctx.ShouldBindQuery(&req); err != nil {
 		utils.ErrorResponse(ctx, http.StatusBadRequest, "invalid query parameters")
 		return

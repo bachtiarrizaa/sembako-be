@@ -142,14 +142,13 @@ func (u *ProductUsecase) DeleteProductUnit(ctx context.Context, productID string
 		return errs.NewBadRequest("cannot delete base unit")
 	}
 
-	if u.db.Migrator().HasTable("transaction_items") {
-		var count int64
-		if err := u.db.Table("transaction_items").Where("product_unit_id = ?", unitID).Count(&count).Error; err != nil {
-			return errs.NewInternal("failed to check transaction history")
-		}
-		if count > 0 {
-			return errs.NewConflict("cannot delete product unit that has been used in transactions")
-		}
+	// TODO: Pindahkan ke TransactionItemRepository ketika modul transaksi sudah diimplementasi.
+	hasRef, err := u.productUnitRepo.HasTransactionReferences(ctx, unitID)
+	if err != nil {
+		return errs.NewInternal("failed to check transaction references")
+	}
+	if hasRef {
+		return errs.NewConflict("cannot delete product unit that has been used in transactions")
 	}
 
 	if err := u.productUnitRepo.Delete(ctx, unitID); err != nil {

@@ -83,7 +83,7 @@ func InitializeApp(cfg *config.Config) (*gin.Engine, error) {
 	productRepo := repository.NewProductRepository(db)
 	productUnitRepo := repository.NewProductUnitRepository(db)
 	productUsecase := usecase.NewProductUsecase(db, productRepo, productUnitRepo)
-	productController := controller.NewProductController(productUsecase)
+	productController := controller.NewProductController(productUsecase, cfg.UploadDir)
 
 	discountRepo := repository.NewDiscountRepository(db)
 	discountUsecase := usecase.NewDiscountUsecase(discountRepo)

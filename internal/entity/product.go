@@ -11,6 +11,7 @@ type Product struct {
 	CategoryID             string         `gorm:"column:category_id;type:uuid;not null" json:"categoryId"`
 	Category               Category       `gorm:"foreignKey:CategoryID" json:"category"`
 	Name                   string         `gorm:"column:name;not null" json:"name"`
+	Image                  *string        `gorm:"column:image" json:"image"`
 	BaseUnitID             string         `gorm:"column:base_unit_id;type:uuid;not null" json:"baseUnitId"`
 	BaseUnit               Unit           `gorm:"foreignKey:BaseUnitID" json:"baseUnit"`
 	MinimumStock           *float64       `gorm:"column:minimum_stock" json:"minimumStock"`
