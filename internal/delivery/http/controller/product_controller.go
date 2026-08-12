@@ -113,7 +113,7 @@ func (c *ProductController) UpdateProduct(ctx *gin.Context) {
 	}
 
 	var req model.UpdateProductRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
+	if err := ctx.ShouldBind(&req); err != nil {
 		utils.ErrorResponse(ctx, http.StatusBadRequest, "invalid request body")
 		return
 	}
@@ -122,8 +122,28 @@ func (c *ProductController) UpdateProduct(ctx *gin.Context) {
 		return
 	}
 
-	res, err := c.usecase.UpdateProduct(ctx.Request.Context(), id, req)
+	uploadCfg := utils.DefaultImageConfig(filepath.Join(c.uploadDir, "products"))
+	result, err := utils.HandleFileUpload(ctx, uploadCfg)
 	if err != nil {
+		if uploadErr, ok := err.(*utils.UploadError); ok {
+			utils.ErrorResponse(ctx, http.StatusBadRequest, uploadErr.Message)
+			return
+		}
+		utils.ErrorResponse(ctx, http.StatusInternalServerError, "failed to process upload file")
+		return
+	}
+
+	var imagePath *string
+	if result != nil {
+		imagePath = &result.FilePath
+	}
+
+	res, err := c.usecase.UpdateProduct(ctx.Request.Context(), id, req, imagePath)
+	if err != nil {
+		// If upload succeeded but product update failed, clean up the newly uploaded image
+		if imagePath != nil {
+			utils.DeleteFile(*imagePath)
+		}
 		handleError(ctx, err)
 		return
 	}

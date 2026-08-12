@@ -38,7 +38,8 @@ func (u *ProductUsecase) UpdateProductUnitStatus(ctx context.Context, productID 
 		return nil, errs.NewInternal("failed to load updated product")
 	}
 
-	return toProductResponse(updatedProduct), nil
+	res := model.ToProductResponse(updatedProduct)
+	return &res, nil
 }
 
 func (u *ProductUsecase) AddProductUnit(ctx context.Context, productID string, req model.AddProductUnitRequest) (*model.ProductResponse, error) {
@@ -74,7 +75,8 @@ func (u *ProductUsecase) AddProductUnit(ctx context.Context, productID string, r
 		return nil, errs.NewInternal("failed to load updated product")
 	}
 
-	return toProductResponse(updated), nil
+	res := model.ToProductResponse(updated)
+	return &res, nil
 }
 
 func (u *ProductUsecase) UpdateProductUnit(ctx context.Context, productID string, unitID string, req model.UpdateProductUnitRequest) (*model.ProductResponse, error) {
@@ -114,7 +116,8 @@ func (u *ProductUsecase) UpdateProductUnit(ctx context.Context, productID string
 		return nil, errs.NewInternal("failed to load updated product")
 	}
 
-	return toProductResponse(updated), nil
+	res := model.ToProductResponse(updated)
+	return &res, nil
 }
 
 func (u *ProductUsecase) DeleteProductUnit(ctx context.Context, productID string, unitID string) error {

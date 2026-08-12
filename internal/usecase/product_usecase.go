@@ -106,7 +106,8 @@ func (u *ProductUsecase) CreateProduct(
 		return nil, errs.NewInternal("failed to load created product")
 	}
 
-	return toProductResponse(created), nil
+	res := model.ToProductResponse(created)
+	return &res, nil
 }
 
 func (u *ProductUsecase) GetProducts(ctx context.Context, req model.GetProductsRequest) ([]model.ProductResponse, utils.Pagination, error) {
@@ -117,7 +118,7 @@ func (u *ProductUsecase) GetProducts(ctx context.Context, req model.GetProductsR
 
 	res := []model.ProductResponse{}
 	for _, p := range products {
-		res = append(res, *toProductResponse(&p))
+		res = append(res, model.ToProductResponse(&p))
 	}
 
 	pagination := utils.BuildPagination(req.Page, req.Limit, total)
@@ -132,10 +133,11 @@ func (u *ProductUsecase) GetProductByID(ctx context.Context, id string) (*model.
 		}
 		return nil, errs.NewInternal("failed to fetch product")
 	}
-	return toProductResponse(product), nil
+	res := model.ToProductResponse(product)
+	return &res, nil
 }
 
-func (u *ProductUsecase) UpdateProduct(ctx context.Context, id string, req model.UpdateProductRequest) (*model.ProductResponse, error) {
+func (u *ProductUsecase) UpdateProduct(ctx context.Context, id string, req model.UpdateProductRequest, imagePath *string) (*model.ProductResponse, error) {
 	product, err := u.productRepo.FindById(ctx, id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -152,6 +154,14 @@ func (u *ProductUsecase) UpdateProduct(ctx context.Context, id string, req model
 		return nil, errs.NewConflict("product name already exists")
 	}
 
+	var oldImage *string
+	if imagePath != nil {
+		if product.Image != nil {
+			oldImage = product.Image
+		}
+		product.Image = imagePath
+	}
+
 	product.CategoryID = req.CategoryID
 	product.Name = req.Name
 	product.MinimumStock = req.MinimumStock
@@ -161,12 +171,17 @@ func (u *ProductUsecase) UpdateProduct(ctx context.Context, id string, req model
 		return nil, errs.NewInternal("failed to update product")
 	}
 
+	if oldImage != nil {
+		utils.DeleteFile(*oldImage)
+	}
+
 	updated, err := u.productRepo.FindById(ctx, product.ID)
 	if err != nil {
 		return nil, errs.NewInternal("failed to load updated product")
 	}
 
-	return toProductResponse(updated), nil
+	res := model.ToProductResponse(updated)
+	return &res, nil
 }
 
 func (u *ProductUsecase) DeleteProduct(ctx context.Context, id string) error {
@@ -276,42 +291,6 @@ func (u *ProductUsecase) UpdateProductStatus(ctx context.Context, id string) (*m
 		return nil, errs.NewInternal("failed to load updated product")
 	}
 
-	return toProductResponse(updated), nil
-}
-
-func toProductResponse(product *entity.Product) *model.ProductResponse {
-	units := make([]model.ProductUnitResponse, 0, len(product.Units))
-	for _, pu := range product.Units {
-		units = append(units, model.ProductUnitResponse{
-			ID: pu.ID,
-			Unit: model.UnitInProductResponse{
-				ID:   pu.Unit.ID,
-				Name: pu.Unit.Name,
-			},
-			ConversionToBase: pu.ConversionToBase,
-			SellingPrice:     pu.SellingPrice,
-			IsBaseUnit:       pu.IsBaseUnit,
-			IsActive:         pu.IsActive,
-		})
-	}
-
-	return &model.ProductResponse{
-		ID: product.ID,
-		Category: model.CategoryInProductResponse{
-			ID:   product.Category.ID,
-			Name: product.Category.Name,
-		},
-		Name:  product.Name,
-		Image: product.Image,
-		BaseUnit: model.UnitInProductResponse{
-			ID:   product.BaseUnit.ID,
-			Name: product.BaseUnit.Name,
-		},
-		MinimumStock:           product.MinimumStock,
-		MarginThresholdPercent: product.MarginThresholdPercent,
-		IsActive:               product.IsActive,
-		Units:                  units,
-		CreatedAt:              product.CreatedAt,
-		UpdatedAt:              product.UpdatedAt,
-	}
+	res := model.ToProductResponse(updated)
+	return &res, nil
 }
