@@ -64,9 +64,14 @@ func (r *purchaseBatchRepositoryImpl) FindPurchaseBatches(ctx context.Context, r
 
 	offset := (req.Page - 1) * req.Limit
 	if err := query.
+		Select("purchase_batches.*, u.id AS unit_source_id, u.name AS unit_source_name").
+		Joins("LEFT JOIN product_units pu ON pu.id = purchase_batches.unit_id").
+		Joins("LEFT JOIN units u ON u.id = pu.unit_id").
 		Preload("Product").
+		Preload("Product.BaseUnit").
 		Preload("Supplier").
 		Preload("Creator").
+		Preload("Unit.Unit").
 		Order("purchase_batches.purchase_date DESC, purchase_batches.created_at DESC").
 		Offset(offset).Limit(req.Limit).
 		Find(&batches).Error; err != nil {
@@ -79,10 +84,16 @@ func (r *purchaseBatchRepositoryImpl) FindPurchaseBatches(ctx context.Context, r
 func (r *purchaseBatchRepositoryImpl) FindByID(ctx context.Context, id string) (*entity.PurchaseBatch, error) {
 	var batch entity.PurchaseBatch
 	if err := r.db.WithContext(ctx).
+		Model(&entity.PurchaseBatch{}).
+		Select("purchase_batches.*, u.id AS unit_source_id, u.name AS unit_source_name").
+		Joins("LEFT JOIN product_units pu ON pu.id = purchase_batches.unit_id").
+		Joins("LEFT JOIN units u ON u.id = pu.unit_id").
 		Preload("Product").
+		Preload("Product.BaseUnit").
 		Preload("Supplier").
 		Preload("Creator").
-		First(&batch, "id = ?", id).Error; err != nil {
+		Preload("Unit.Unit").
+		First(&batch, "purchase_batches.id = ?", id).Error; err != nil {
 		return nil, err
 	}
 	return &batch, nil
