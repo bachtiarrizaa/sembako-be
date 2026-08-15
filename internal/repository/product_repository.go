@@ -119,11 +119,7 @@ func (r *productRepositoryImpl) HasTransactionReferences(ctx context.Context, pr
 	return count > 0, nil
 }
 
-// TODO: Pindahkan ke PurchaseBatchRepository ketika modul pembelian sudah diimplementasi.
 func (r *productRepositoryImpl) HasPurchaseReferences(ctx context.Context, productID string) (bool, error) {
-	if !r.db.Migrator().HasTable("purchase_batches") {
-		return false, nil
-	}
 	var count int64
 	err := r.db.WithContext(ctx).Table("purchase_batches").
 		Where("product_id = ?", productID).
