@@ -39,6 +39,11 @@ type PurchaseSupplierResponse struct {
 	Name string `json:"name"`
 }
 
+type PurchaseUnitResponse struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
 type PurchaseCreatorResponse struct {
 	ID   string `json:"id"`
 	Name string `json:"name"`
@@ -48,6 +53,9 @@ type PurchaseBatchResponse struct {
 	ID                string                   `json:"id"`
 	Product           PurchaseProductResponse  `json:"product"`
 	Supplier          PurchaseSupplierResponse `json:"supplier"`
+	Unit              *PurchaseUnitResponse    `json:"unit"`
+	UnitPrice         *float64                 `json:"unitPrice"`
+	BaseUnit          *PurchaseUnitResponse    `json:"baseUnit"`
 	InitialQuantity   float64                  `json:"initialQuantity"`
 	RemainingQuantity float64                  `json:"remainingQuantity"`
 	PurchasePrice     float64                  `json:"purchasePrice"`
@@ -67,6 +75,26 @@ type GetPurchaseBatchesRequest struct {
 	Limit      int    `form:"limit,default=10"`
 }
 
+func ToBaseUnitResponse(u *entity.Unit) *PurchaseUnitResponse {
+	if u == nil || u.ID == "" {
+		return nil
+	}
+	return &PurchaseUnitResponse{
+		ID:   u.ID,
+		Name: u.Name,
+	}
+}
+
+func ToPurchaseUnitResponse(b *entity.PurchaseBatch) *PurchaseUnitResponse {
+	if b.UnitID == nil || b.UnitSourceName == "" {
+		return nil
+	}
+	return &PurchaseUnitResponse{
+		ID:   b.UnitSourceID,
+		Name: b.UnitSourceName,
+	}
+}
+
 func ToPurchaseBatchResponse(b *entity.PurchaseBatch) PurchaseBatchResponse {
 	return PurchaseBatchResponse{
 		ID: b.ID,
@@ -78,6 +106,9 @@ func ToPurchaseBatchResponse(b *entity.PurchaseBatch) PurchaseBatchResponse {
 			ID:   b.SupplierID,
 			Name: b.Supplier.Name,
 		},
+		Unit:              ToPurchaseUnitResponse(b),
+		UnitPrice:         b.UnitPrice,
+		BaseUnit:          ToBaseUnitResponse(&b.Product.BaseUnit),
 		InitialQuantity:   b.InitialQty,
 		RemainingQuantity: b.RemainingQty,
 		PurchasePrice:     b.PurchasePrice,

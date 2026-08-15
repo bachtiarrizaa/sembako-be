@@ -95,6 +95,8 @@ func (u *purchaseUsecaseImpl) CreatePurchase(ctx context.Context, creatorID stri
 			batch := &entity.PurchaseBatch{
 				ProductID:     item.ProductID,
 				SupplierID:    req.SupplierID,
+				UnitID:        &matchedUnit.ID,
+				UnitPrice:     &item.PurchasePrice,
 				InitialQty:    qtyInBase,
 				RemainingQty:  qtyInBase,
 				PurchasePrice: pricePerBase,
@@ -145,6 +147,9 @@ func (u *purchaseUsecaseImpl) GetPurchaseBatches(ctx context.Context, req model.
 				ID:   b.SupplierID,
 				Name: b.Supplier.Name,
 			},
+			Unit:              model.ToPurchaseUnitResponse(&b),
+			UnitPrice:         b.UnitPrice,
+			BaseUnit:          model.ToBaseUnitResponse(&b.Product.BaseUnit),
 			InitialQuantity:   b.InitialQty,
 			RemainingQuantity: b.RemainingQty,
 			PurchasePrice:     b.PurchasePrice,
@@ -238,6 +243,8 @@ func (u *purchaseUsecaseImpl) UpdatePurchase(ctx context.Context, id string, req
 			batch.SupplierID = req.SupplierID
 			batch.InvoiceNumber = req.InvoiceNumber
 			batch.PurchaseDate = parsedDate
+			batch.UnitID = &matchedUnit.ID
+			batch.UnitPrice = &req.PurchasePrice
 			batch.InitialQty = newQtyInBase
 			batch.RemainingQty = newQtyInBase
 			batch.PurchasePrice = newPricePerBase

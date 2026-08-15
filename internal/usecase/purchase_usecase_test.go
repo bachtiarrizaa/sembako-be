@@ -157,6 +157,15 @@ func TestPurchaseUsecase_CRUD(t *testing.T) {
 		if batch.PurchasePrice != 5000.0 { // 120000 / 24
 			t.Errorf("expected purchase price 5000, got: %f", batch.PurchasePrice)
 		}
+		if batch.Unit == nil || batch.Unit.Name != unitDus.Name {
+			t.Errorf("expected unit to be populated with %q, got: %+v", unitDus.Name, batch.Unit)
+		}
+		if batch.UnitPrice == nil || *batch.UnitPrice != 120000.0 {
+			t.Errorf("expected unit price 120000, got: %v", batch.UnitPrice)
+		}
+		if batch.BaseUnit == nil || batch.BaseUnit.Name != unitBase.Name {
+			t.Errorf("expected base unit to be populated with %q, got: %+v", unitBase.Name, batch.BaseUnit)
+		}
 	})
 
 	t.Run("Create Purchase - Supplier Inactive - Failure", func(t *testing.T) {
@@ -207,6 +216,12 @@ func TestPurchaseUsecase_CRUD(t *testing.T) {
 		}
 		if updated.RemainingQuantity != 72.0 {
 			t.Errorf("expected updated remaining qty 72, got: %f", updated.RemainingQuantity)
+		}
+		if updated.Unit == nil || updated.Unit.Name != unitDus.Name {
+			t.Errorf("expected unit to remain populated after update, got: %+v", updated.Unit)
+		}
+		if updated.UnitPrice == nil || *updated.UnitPrice != 120000.0 {
+			t.Errorf("expected unit price 120000 after update, got: %v", updated.UnitPrice)
 		}
 	})
 
