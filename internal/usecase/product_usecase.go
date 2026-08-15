@@ -95,10 +95,23 @@ func (u *ProductUsecase) CreateProduct(
 
 	if txErr != nil {
 		var pgErr *pgconn.PgError
-		if errors.As(txErr, &pgErr) && pgErr.Code == "23505" {
-			return nil, errs.NewConflict("product unit has duplicate unit assignment")
+		if errors.As(txErr, &pgErr) {
+			if pgErr.Code == "23505" {
+				return nil, errs.NewConflict("product unit has duplicate unit assignment")
+			}
+			if pgErr.Code == "23503" {
+				if pgErr.ConstraintName == "products_category_id_fkey" {
+					return nil, errs.NewBadRequest("category not found")
+				}
+				if pgErr.ConstraintName == "products_base_unit_id_fkey" {
+					return nil, errs.NewBadRequest("base unit not found")
+				}
+				if pgErr.ConstraintName == "product_units_unit_id_fkey" {
+					return nil, errs.NewBadRequest("unit not found in product units")
+				}
+			}
 		}
-		return nil, errs.NewInternal("failed to create product")
+		return nil, errs.NewInternal("failed to create product: " + txErr.Error())
 	}
 
 	created, err := u.productRepo.FindById(ctx, product.ID)

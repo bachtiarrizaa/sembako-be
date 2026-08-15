@@ -94,6 +94,10 @@ func InitializeApp(cfg *config.Config) (*gin.Engine, error) {
 	permissionUsecase := usecase.NewPermissionUsecase(db, permissionRepo, userRepo)
 	permissionController := controller.NewPermissionController(permissionUsecase)
 
+	purchaseBatchRepo := repository.NewPurchaseBatchRepository(db)
+	purchaseUsecase := usecase.NewPurchaseUsecase(db, purchaseBatchRepo, productRepo, supplierRepo)
+	purchaseController := controller.NewPurchaseController(purchaseUsecase)
+
 	app := gin.Default()
 	app.Static("/uploads", cfg.UploadDir)
 	app.Use(cors.New(cors.Config{
@@ -118,6 +122,7 @@ func InitializeApp(cfg *config.Config) (*gin.Engine, error) {
 		discountController,
 		permissionController,
 		permissionUsecase,
+		purchaseController,
 	)
 
 	return app, nil
