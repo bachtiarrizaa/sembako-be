@@ -94,9 +94,16 @@ func InitializeApp(cfg *config.Config) (*gin.Engine, error) {
 	permissionUsecase := usecase.NewPermissionUsecase(db, permissionRepo, userRepo)
 	permissionController := controller.NewPermissionController(permissionUsecase)
 
+	stockRepo := repository.NewStockRepository(db)
+	stockMutationRepo := repository.NewStockMutationRepository(db)
+	stockCountRepo := repository.NewStockCountRepository(db)
+
 	purchaseBatchRepo := repository.NewPurchaseBatchRepository(db)
-	purchaseUsecase := usecase.NewPurchaseUsecase(db, purchaseBatchRepo, productRepo, supplierRepo)
+	purchaseUsecase := usecase.NewPurchaseUsecase(db, purchaseBatchRepo, productRepo, supplierRepo, stockRepo, stockMutationRepo)
 	purchaseController := controller.NewPurchaseController(purchaseUsecase)
+
+	stockUsecase := usecase.NewStockUsecase(db, stockRepo, stockMutationRepo, stockCountRepo, productRepo, permissionUsecase)
+	stockController := controller.NewStockController(stockUsecase)
 
 	app := gin.Default()
 	app.Static("/uploads", cfg.UploadDir)
@@ -123,6 +130,7 @@ func InitializeApp(cfg *config.Config) (*gin.Engine, error) {
 		permissionController,
 		permissionUsecase,
 		purchaseController,
+		stockController,
 	)
 
 	return app, nil

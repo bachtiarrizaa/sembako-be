@@ -1,0 +1,2 @@
+DROP TABLE IF EXISTS stock_mutations;
+DROP TABLE IF EXISTS stocks;

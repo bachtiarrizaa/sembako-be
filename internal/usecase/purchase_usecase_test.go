@@ -42,7 +42,10 @@ func TestPurchaseUsecase_CRUD(t *testing.T) {
 	productRepo := repository.NewProductRepository(db)
 	supplierRepo := repository.NewSupplierRepository(db)
 
-	purchaseUsecase := usecase.NewPurchaseUsecase(db, purchaseBatchRepo, productRepo, supplierRepo)
+	stockRepo := repository.NewStockRepository(db)
+	stockMutationRepo := repository.NewStockMutationRepository(db)
+
+	purchaseUsecase := usecase.NewPurchaseUsecase(db, purchaseBatchRepo, productRepo, supplierRepo, stockRepo, stockMutationRepo)
 
 	// Generate random UUIDs for clean isolation
 	roleID := uuid.New().String()
@@ -206,7 +209,7 @@ func TestPurchaseUsecase_CRUD(t *testing.T) {
 			PurchasePrice: 120000.0,
 		}
 
-		updated, err := purchaseUsecase.UpdatePurchase(ctx, createdBatchID, req)
+		updated, err := purchaseUsecase.UpdatePurchase(ctx, user.ID, createdBatchID, req)
 		if err != nil {
 			t.Fatalf("expected no error, got: %v", err)
 		}
@@ -246,7 +249,7 @@ func TestPurchaseUsecase_CRUD(t *testing.T) {
 			PurchasePrice: 120000.0,
 		}
 
-		_, err := purchaseUsecase.UpdatePurchase(ctx, createdBatchID, req)
+		_, err := purchaseUsecase.UpdatePurchase(ctx, user.ID, createdBatchID, req)
 		if err == nil {
 			t.Errorf("expected error updating quantity of a partially sold batch, got nil")
 		}
@@ -263,7 +266,7 @@ func TestPurchaseUsecase_CRUD(t *testing.T) {
 			PurchasePrice: 120000.0,
 		}
 
-		updated, err := purchaseUsecase.UpdatePurchase(ctx, createdBatchID, req)
+		updated, err := purchaseUsecase.UpdatePurchase(ctx, user.ID, createdBatchID, req)
 		if err != nil {
 			t.Fatalf("expected no error updating invoice of a partially sold batch, got: %v", err)
 		}
@@ -274,7 +277,7 @@ func TestPurchaseUsecase_CRUD(t *testing.T) {
 	})
 
 	t.Run("Delete Purchase - Partially Sold - Failure", func(t *testing.T) {
-		err := purchaseUsecase.DeletePurchase(ctx, createdBatchID)
+		err := purchaseUsecase.DeletePurchase(ctx, user.ID, createdBatchID)
 		if err == nil {
 			t.Errorf("expected error deleting partially sold batch, got nil")
 		}
@@ -292,7 +295,7 @@ func TestPurchaseUsecase_CRUD(t *testing.T) {
 			t.Fatalf("failed to reset remaining qty: %v", err)
 		}
 
-		err := purchaseUsecase.DeletePurchase(ctx, createdBatchID)
+		err := purchaseUsecase.DeletePurchase(ctx, user.ID, createdBatchID)
 		if err != nil {
 			t.Fatalf("expected no error deleting unsold batch, got: %v", err)
 		}

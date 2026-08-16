@@ -65,6 +65,7 @@ func (r *productRepositoryImpl) FindProducts(ctx context.Context, req model.GetP
 		Preload("BaseUnit").
 		Preload("Units").
 		Preload("Units.Unit").
+		Preload("Stock").
 		Order("created_at DESC").
 		Offset(offset).Limit(req.Limit).
 		Find(&products).Error; err != nil {
@@ -81,6 +82,7 @@ func (r *productRepositoryImpl) FindById(ctx context.Context, id string) (*entit
 		Preload("BaseUnit").
 		Preload("Units").
 		Preload("Units.Unit").
+		Preload("Stock").
 		First(&product, "id = ?", id).Error; err != nil {
 		return nil, err
 	}

@@ -53,28 +53,6 @@ func (u *PermissionUsecase) CheckUserPermission(ctx context.Context, userIDStr s
 		return true, nil
 	}
 
-	var targetPerm entity.Permission
-	err = u.db.WithContext(ctx).First(&targetPerm, "name = ?", permissionName).Error
-	if err != nil {
-		return false, nil
-	}
-
-	for _, p := range rolePermissions {
-		currentParentID := p.ParentID
-		for currentParentID != nil {
-			if *currentParentID == targetPerm.ID {
-				return true, nil
-			}
-
-			var parent entity.Permission
-			err = u.db.WithContext(ctx).First(&parent, "id = ?", *currentParentID).Error
-			if err != nil {
-				break
-			}
-			currentParentID = parent.ParentID
-		}
-	}
-
 	return false, nil
 }
 
