@@ -74,6 +74,7 @@ type ProductResponse struct {
 	MarginThresholdPercent *float64                  `json:"marginThresholdPercent"`
 	IsActive               bool                      `json:"isActive"`
 	Units                  []ProductUnitResponse     `json:"units"`
+	Stock                  float64                   `json:"stock"`
 	CreatedAt              time.Time                 `json:"createdAt"`
 	UpdatedAt              time.Time                 `json:"updatedAt"`
 }
@@ -94,6 +95,11 @@ func ToProductResponse(product *entity.Product) ProductResponse {
 		})
 	}
 
+	var stockVal float64 = 0
+	if product.Stock != nil {
+		stockVal = product.Stock.QtyBaseUnit
+	}
+
 	return ProductResponse{
 		ID: product.ID,
 		Category: CategoryInProductResponse{
@@ -110,6 +116,7 @@ func ToProductResponse(product *entity.Product) ProductResponse {
 		MarginThresholdPercent: product.MarginThresholdPercent,
 		IsActive:               product.IsActive,
 		Units:                  units,
+		Stock:                  stockVal,
 		CreatedAt:              product.CreatedAt,
 		UpdatedAt:              product.UpdatedAt,
 	}

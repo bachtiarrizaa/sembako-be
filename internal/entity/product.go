@@ -18,6 +18,7 @@ type Product struct {
 	MarginThresholdPercent *float64       `gorm:"column:margin_threshold_percent" json:"marginThresholdPercent"`
 	IsActive               bool           `gorm:"column:is_active;not null;default:true" json:"isActive"`
 	Units                  []ProductUnit  `gorm:"foreignKey:ProductID" json:"units,omitempty"`
+	Stock                  *Stock         `gorm:"foreignKey:ProductID" json:"stock,omitempty"`
 	CreatedAt              time.Time      `gorm:"column:created_at;autoCreateTime" json:"createdAt"`
 	UpdatedAt              time.Time      `gorm:"column:updated_at;autoUpdateTime" json:"updatedAt"`
 	DeletedAt              gorm.DeletedAt `gorm:"index" json:"-"`

@@ -89,6 +89,12 @@ func (c *PurchaseController) GetPurchaseBatchByID(ctx *gin.Context) {
 }
 
 func (c *PurchaseController) UpdatePurchase(ctx *gin.Context) {
+	userID, exists := middleware.GetUserID(ctx)
+	if !exists {
+		utils.ErrorResponse(ctx, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+
 	id := ctx.Param("id")
 	if id == "" {
 		utils.ErrorResponse(ctx, http.StatusBadRequest, "missing purchase batch ID")
@@ -106,7 +112,7 @@ func (c *PurchaseController) UpdatePurchase(ctx *gin.Context) {
 		return
 	}
 
-	res, err := c.usecase.UpdatePurchase(ctx.Request.Context(), id, req)
+	res, err := c.usecase.UpdatePurchase(ctx.Request.Context(), userID.String(), id, req)
 	if err != nil {
 		utils.HandleError(ctx, err)
 		return
@@ -116,13 +122,19 @@ func (c *PurchaseController) UpdatePurchase(ctx *gin.Context) {
 }
 
 func (c *PurchaseController) DeletePurchase(ctx *gin.Context) {
+	userID, exists := middleware.GetUserID(ctx)
+	if !exists {
+		utils.ErrorResponse(ctx, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+
 	id := ctx.Param("id")
 	if id == "" {
 		utils.ErrorResponse(ctx, http.StatusBadRequest, "missing purchase batch ID")
 		return
 	}
 
-	err := c.usecase.DeletePurchase(ctx.Request.Context(), id)
+	err := c.usecase.DeletePurchase(ctx.Request.Context(), userID.String(), id)
 	if err != nil {
 		utils.HandleError(ctx, err)
 		return

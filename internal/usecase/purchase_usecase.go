@@ -17,8 +17,8 @@ type PurchaseUsecase interface {
 	CreatePurchase(ctx context.Context, creatorID string, req model.CreatePurchaseRequest) ([]model.PurchaseBatchResponse, error)
 	GetPurchaseBatches(ctx context.Context, req model.GetPurchaseBatchesRequest) ([]model.PurchaseBatchResponse, utils.Pagination, error)
 	GetPurchaseBatchByID(ctx context.Context, id string) (*model.PurchaseBatchResponse, error)
-	UpdatePurchase(ctx context.Context, id string, req model.UpdatePurchaseRequest) (*model.PurchaseBatchResponse, error)
-	DeletePurchase(ctx context.Context, id string) error
+	UpdatePurchase(ctx context.Context, updaterID string, id string, req model.UpdatePurchaseRequest) (*model.PurchaseBatchResponse, error)
+	DeletePurchase(ctx context.Context, deleterID string, id string) error
 }
 
 type purchaseUsecaseImpl struct {
@@ -26,6 +26,8 @@ type purchaseUsecaseImpl struct {
 	purchaseBatchRepo repository.PurchaseBatchRepository
 	productRepo       repository.ProductRepository
 	supplierRepo      repository.SupplierRepository
+	stockRepo         repository.StockRepository
+	stockMutationRepo repository.StockMutationRepository
 }
 
 func NewPurchaseUsecase(
@@ -33,12 +35,16 @@ func NewPurchaseUsecase(
 	purchaseBatchRepo repository.PurchaseBatchRepository,
 	productRepo repository.ProductRepository,
 	supplierRepo repository.SupplierRepository,
+	stockRepo repository.StockRepository,
+	stockMutationRepo repository.StockMutationRepository,
 ) PurchaseUsecase {
 	return &purchaseUsecaseImpl{
 		db:                db,
 		purchaseBatchRepo: purchaseBatchRepo,
 		productRepo:       productRepo,
 		supplierRepo:      supplierRepo,
+		stockRepo:         stockRepo,
+		stockMutationRepo: stockMutationRepo,
 	}
 }
 
@@ -62,6 +68,8 @@ func (u *purchaseUsecaseImpl) CreatePurchase(ctx context.Context, creatorID stri
 	txErr := u.db.Transaction(func(tx *gorm.DB) error {
 		purchaseBatchRepoTx := u.purchaseBatchRepo.WithTx(tx)
 		productRepoTx := u.productRepo.WithTx(tx)
+		stockRepoTx := u.stockRepo.WithTx(tx)
+		stockMutationRepoTx := u.stockMutationRepo.WithTx(tx)
 
 		for _, item := range req.Items {
 			// Find product
@@ -109,6 +117,45 @@ func (u *purchaseUsecaseImpl) CreatePurchase(ctx context.Context, creatorID stri
 				return err
 			}
 			createdIDs = append(createdIDs, batch.ID)
+
+			// 1. Get current stock
+			var qtyBefore float64 = 0
+			currentStock, err := stockRepoTx.GetByProductID(ctx, item.ProductID)
+			if err == nil {
+				qtyBefore = currentStock.QtyBaseUnit
+			}
+
+			// 2. Update stock cache
+			qtyAfter := qtyBefore + qtyInBase
+			stock := &entity.Stock{
+				ProductID:   item.ProductID,
+				QtyBaseUnit: qtyAfter,
+			}
+			if err := stockRepoTx.UpsertStock(ctx, stock); err != nil {
+				return err
+			}
+
+			// 3. Log stock mutation
+			noteStr := ""
+			if req.InvoiceNumber != nil {
+				noteStr = "Invoice: " + *req.InvoiceNumber
+			}
+			mutation := &entity.StockMutation{
+				ProductID:   item.ProductID,
+				Type:        "in",
+				Qty:         qtyInBase,
+				QtyBefore:   qtyBefore,
+				QtyAfter:    qtyAfter,
+				Source:      "purchase",
+				ReferenceID: &batch.ID,
+				CreatedBy:   creatorID,
+			}
+			if noteStr != "" {
+				mutation.Note = &noteStr
+			}
+			if err := stockMutationRepoTx.Create(ctx, mutation); err != nil {
+				return err
+			}
 		}
 		return nil
 	})
@@ -179,7 +226,7 @@ func (u *purchaseUsecaseImpl) GetPurchaseBatchByID(ctx context.Context, id strin
 	return &res, nil
 }
 
-func (u *purchaseUsecaseImpl) UpdatePurchase(ctx context.Context, id string, req model.UpdatePurchaseRequest) (*model.PurchaseBatchResponse, error) {
+func (u *purchaseUsecaseImpl) UpdatePurchase(ctx context.Context, updaterID string, id string, req model.UpdatePurchaseRequest) (*model.PurchaseBatchResponse, error) {
 	parsedDate, err := time.Parse("2006-01-02", req.PurchaseDate)
 	if err != nil {
 		return nil, errs.NewBadRequest("invalid purchase date format, must be YYYY-MM-DD")
@@ -197,6 +244,8 @@ func (u *purchaseUsecaseImpl) UpdatePurchase(ctx context.Context, id string, req
 	txErr := u.db.Transaction(func(tx *gorm.DB) error {
 		purchaseBatchRepoTx := u.purchaseBatchRepo.WithTx(tx)
 		productRepoTx := u.productRepo.WithTx(tx)
+		stockRepoTx := u.stockRepo.WithTx(tx)
+		stockMutationRepoTx := u.stockMutationRepo.WithTx(tx)
 
 		// Fetch existing batch
 		batch, err := purchaseBatchRepoTx.FindByID(ctx, id)
@@ -229,6 +278,8 @@ func (u *purchaseUsecaseImpl) UpdatePurchase(ctx context.Context, id string, req
 
 		hasBeenSold := batch.RemainingQty < batch.InitialQty
 
+		delta := newQtyInBase - batch.InitialQty
+
 		if hasBeenSold {
 			// If already sold, we cannot change product, quantity, or price!
 			if newQtyInBase != batch.InitialQty || newPricePerBase != batch.PurchasePrice {
@@ -248,6 +299,48 @@ func (u *purchaseUsecaseImpl) UpdatePurchase(ctx context.Context, id string, req
 			batch.InitialQty = newQtyInBase
 			batch.RemainingQty = newQtyInBase
 			batch.PurchasePrice = newPricePerBase
+
+			if delta != 0 {
+				var qtyBefore float64 = 0
+				currentStock, err := stockRepoTx.GetByProductID(ctx, batch.ProductID)
+				if err == nil {
+					qtyBefore = currentStock.QtyBaseUnit
+				}
+
+				qtyAfter := qtyBefore + delta
+				stock := &entity.Stock{
+					ProductID:   batch.ProductID,
+					QtyBaseUnit: qtyAfter,
+				}
+				if err := stockRepoTx.UpsertStock(ctx, stock); err != nil {
+					return err
+				}
+
+				mType := "in"
+				mQty := delta
+				if delta < 0 {
+					mType = "out"
+					mQty = -delta
+				}
+				noteStr := "purchase update adjustment"
+				if req.InvoiceNumber != nil {
+					noteStr += " (Invoice: " + *req.InvoiceNumber + ")"
+				}
+				mutation := &entity.StockMutation{
+					ProductID:   batch.ProductID,
+					Type:        mType,
+					Qty:         mQty,
+					QtyBefore:   qtyBefore,
+					QtyAfter:    qtyAfter,
+					Source:      "purchase",
+					ReferenceID: &batch.ID,
+					Note:        &noteStr,
+					CreatedBy:   updaterID,
+				}
+				if err := stockMutationRepoTx.Create(ctx, mutation); err != nil {
+					return err
+				}
+			}
 		}
 
 		return purchaseBatchRepoTx.Update(ctx, batch)
@@ -266,9 +359,11 @@ func (u *purchaseUsecaseImpl) UpdatePurchase(ctx context.Context, id string, req
 	return &res, nil
 }
 
-func (u *purchaseUsecaseImpl) DeletePurchase(ctx context.Context, id string) error {
+func (u *purchaseUsecaseImpl) DeletePurchase(ctx context.Context, deleterID string, id string) error {
 	txErr := u.db.Transaction(func(tx *gorm.DB) error {
 		purchaseBatchRepoTx := u.purchaseBatchRepo.WithTx(tx)
+		stockRepoTx := u.stockRepo.WithTx(tx)
+		stockMutationRepoTx := u.stockMutationRepo.WithTx(tx)
 
 		// Fetch existing batch
 		batch, err := purchaseBatchRepoTx.FindByID(ctx, id)
@@ -279,6 +374,43 @@ func (u *purchaseUsecaseImpl) DeletePurchase(ctx context.Context, id string) err
 		hasBeenSold := batch.RemainingQty < batch.InitialQty
 		if hasBeenSold {
 			return errs.NewConflict("cannot delete a purchase batch that has been partially sold")
+		}
+
+		// 1. Get current stock
+		var qtyBefore float64 = 0
+		currentStock, err := stockRepoTx.GetByProductID(ctx, batch.ProductID)
+		if err == nil {
+			qtyBefore = currentStock.QtyBaseUnit
+		}
+
+		// 2. Update stock cache
+		qtyAfter := qtyBefore - batch.InitialQty
+		stock := &entity.Stock{
+			ProductID:   batch.ProductID,
+			QtyBaseUnit: qtyAfter,
+		}
+		if err := stockRepoTx.UpsertStock(ctx, stock); err != nil {
+			return err
+		}
+
+		// 3. Log stock mutation
+		noteStr := "purchase deleted"
+		if batch.InvoiceNumber != nil {
+			noteStr += " (Invoice: " + *batch.InvoiceNumber + ")"
+		}
+		mutation := &entity.StockMutation{
+			ProductID:   batch.ProductID,
+			Type:        "out",
+			Qty:         batch.InitialQty,
+			QtyBefore:   qtyBefore,
+			QtyAfter:    qtyAfter,
+			Source:      "purchase",
+			ReferenceID: &batch.ID,
+			Note:        &noteStr,
+			CreatedBy:   deleterID,
+		}
+		if err := stockMutationRepoTx.Create(ctx, mutation); err != nil {
+			return err
 		}
 
 		return purchaseBatchRepoTx.Delete(ctx, id)
