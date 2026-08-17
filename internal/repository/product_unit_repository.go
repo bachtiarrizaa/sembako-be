@@ -16,6 +16,7 @@ type ProductUnitRepository interface {
 	Delete(ctx context.Context, id string) error
 	DeleteByProductID(ctx context.Context, productID string) error
 	DeactivateAllByProductID(ctx context.Context, productID string) error
+	ActivateAllByProductID(ctx context.Context, productID string) error
 	WithTx(tx *gorm.DB) ProductUnitRepository
 	// TODO: Pindahkan ke TransactionItemRepository ketika modul transaksi sudah diimplementasi.
 	HasTransactionReferences(ctx context.Context, unitID string) (bool, error)
@@ -79,6 +80,10 @@ func (r *productUnitRepositoryImpl) DeleteByProductID(ctx context.Context, produ
 
 func (r *productUnitRepositoryImpl) DeactivateAllByProductID(ctx context.Context, productID string) error {
 	return r.db.WithContext(ctx).Model(&entity.ProductUnit{}).Where("product_id = ?", productID).Update("is_active", false).Error
+}
+
+func (r *productUnitRepositoryImpl) ActivateAllByProductID(ctx context.Context, productID string) error {
+	return r.db.WithContext(ctx).Model(&entity.ProductUnit{}).Where("product_id = ?", productID).Update("is_active", true).Error
 }
 
 // TODO: Pindahkan ke TransactionItemRepository ketika modul transaksi sudah diimplementasi.
