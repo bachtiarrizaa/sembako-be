@@ -290,6 +290,8 @@ func (u *ProductUsecase) UpdateProductStatus(ctx context.Context, id string) (*m
 			if err := productUnitRepoTx.DeactivateAllByProductID(ctx, product.ID); err != nil {
 				return err
 			}
+		} else if err := productUnitRepoTx.ActivateAllByProductID(ctx, product.ID); err != nil {
+			return err
 		}
 
 		return nil

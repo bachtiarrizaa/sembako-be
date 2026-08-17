@@ -108,7 +108,7 @@ func InitializeApp(cfg *config.Config) (*gin.Engine, error) {
 	app := gin.Default()
 	app.Static("/uploads", cfg.UploadDir)
 	app.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"http://localhost:3000"},
+		AllowAllOrigins:  true,
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
 		AllowCredentials: true,
