@@ -98,8 +98,9 @@ func InitializeApp(cfg *config.Config) (*gin.Engine, error) {
 	stockMutationRepo := repository.NewStockMutationRepository(db)
 	stockCountRepo := repository.NewStockCountRepository(db)
 
+	purchaseRepo := repository.NewPurchaseRepository(db)
 	purchaseBatchRepo := repository.NewPurchaseBatchRepository(db)
-	purchaseUsecase := usecase.NewPurchaseUsecase(db, purchaseBatchRepo, productRepo, supplierRepo, stockRepo, stockMutationRepo)
+	purchaseUsecase := usecase.NewPurchaseUsecase(db, purchaseRepo, purchaseBatchRepo, productRepo, supplierRepo, stockRepo, stockMutationRepo)
 	purchaseController := controller.NewPurchaseController(purchaseUsecase)
 
 	stockUsecase := usecase.NewStockUsecase(db, stockRepo, stockMutationRepo, stockCountRepo, productRepo, permissionUsecase)

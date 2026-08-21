@@ -14,15 +14,17 @@ import (
 )
 
 type PurchaseUsecase interface {
-	CreatePurchase(ctx context.Context, creatorID string, req model.CreatePurchaseRequest) ([]model.PurchaseBatchResponse, error)
-	GetPurchaseBatches(ctx context.Context, req model.GetPurchaseBatchesRequest) ([]model.PurchaseBatchResponse, utils.Pagination, error)
-	GetPurchaseBatchByID(ctx context.Context, id string) (*model.PurchaseBatchResponse, error)
-	UpdatePurchase(ctx context.Context, updaterID string, id string, req model.UpdatePurchaseRequest) (*model.PurchaseBatchResponse, error)
+	CreatePurchase(ctx context.Context, creatorID string, req model.CreatePurchaseRequest) (*model.PurchaseDetailResponse, error)
+	GetPurchases(ctx context.Context, req model.GetPurchaseBatchesRequest) ([]model.PurchaseSummaryResponse, utils.Pagination, error)
+	GetPurchaseDetail(ctx context.Context, id string) (*model.PurchaseDetailResponse, error)
+	UpdatePurchaseItem(ctx context.Context, updaterID string, id string, req model.UpdatePurchaseRequest) (*model.PurchaseBatchResponse, error)
 	DeletePurchase(ctx context.Context, deleterID string, id string) error
+	DeletePurchaseItem(ctx context.Context, deleterID string, id string) error
 }
 
 type purchaseUsecaseImpl struct {
 	db                *gorm.DB
+	purchaseRepo      repository.PurchaseRepository
 	purchaseBatchRepo repository.PurchaseBatchRepository
 	productRepo       repository.ProductRepository
 	supplierRepo      repository.SupplierRepository
@@ -32,6 +34,7 @@ type purchaseUsecaseImpl struct {
 
 func NewPurchaseUsecase(
 	db *gorm.DB,
+	purchaseRepo repository.PurchaseRepository,
 	purchaseBatchRepo repository.PurchaseBatchRepository,
 	productRepo repository.ProductRepository,
 	supplierRepo repository.SupplierRepository,
@@ -40,6 +43,7 @@ func NewPurchaseUsecase(
 ) PurchaseUsecase {
 	return &purchaseUsecaseImpl{
 		db:                db,
+		purchaseRepo:      purchaseRepo,
 		purchaseBatchRepo: purchaseBatchRepo,
 		productRepo:       productRepo,
 		supplierRepo:      supplierRepo,
@@ -48,7 +52,48 @@ func NewPurchaseUsecase(
 	}
 }
 
-func (u *purchaseUsecaseImpl) CreatePurchase(ctx context.Context, creatorID string, req model.CreatePurchaseRequest) ([]model.PurchaseBatchResponse, error) {
+type preparedPurchaseItem struct {
+	product      *entity.Product
+	matchedUnit  *entity.ProductUnit
+	qtyInBase    float64
+	pricePerBase float64
+}
+
+func (u *purchaseUsecaseImpl) prepareItem(ctx context.Context, item model.CreatePurchaseItem) (*preparedPurchaseItem, error) {
+	product, err := u.productRepo.FindById(ctx, item.ProductID)
+	if err != nil {
+		return nil, errs.NewNotFound("product not found: " + item.ProductID)
+	}
+	if !product.IsActive {
+		return nil, errs.NewConflict("cannot purchase an inactive product: " + product.Name)
+	}
+
+	var matchedUnit *entity.ProductUnit
+	for i := range product.Units {
+		if product.Units[i].UnitID == item.UnitID {
+			matchedUnit = &product.Units[i]
+			break
+		}
+	}
+	if matchedUnit == nil {
+		return nil, errs.NewNotFound("product unit not found for the given product")
+	}
+	if !matchedUnit.IsActive {
+		return nil, errs.NewConflict("cannot purchase with an inactive product unit")
+	}
+
+	qtyInBase := item.Quantity * matchedUnit.ConversionToBase
+	pricePerBase := item.PurchasePrice / matchedUnit.ConversionToBase
+
+	return &preparedPurchaseItem{
+		product:      product,
+		matchedUnit:  matchedUnit,
+		qtyInBase:    qtyInBase,
+		pricePerBase: pricePerBase,
+	}, nil
+}
+
+func (u *purchaseUsecaseImpl) CreatePurchase(ctx context.Context, creatorID string, req model.CreatePurchaseRequest) (*model.PurchaseDetailResponse, error) {
 	parsedDate, err := time.Parse("2006-01-02", req.PurchaseDate)
 	if err != nil {
 		return nil, errs.NewBadRequest("invalid purchase date format, must be YYYY-MM-DD")
@@ -63,16 +108,43 @@ func (u *purchaseUsecaseImpl) CreatePurchase(ctx context.Context, creatorID stri
 		return nil, errs.NewConflict("cannot record purchase from an inactive supplier")
 	}
 
-	var createdIDs []string
+	// Pre-validate items and compute the invoice total
+	prepared := make([]preparedPurchaseItem, 0, len(req.Items))
+	var totalAmount float64 = 0
+	for _, item := range req.Items {
+		pi, err := u.prepareItem(ctx, item)
+		if err != nil {
+			return nil, err
+		}
+		totalAmount += pi.qtyInBase * pi.pricePerBase
+		prepared = append(prepared, *pi)
+	}
+
+	var purchaseID string
 
 	txErr := u.db.Transaction(func(tx *gorm.DB) error {
+		purchaseRepoTx := u.purchaseRepo.WithTx(tx)
 		purchaseBatchRepoTx := u.purchaseBatchRepo.WithTx(tx)
 		productRepoTx := u.productRepo.WithTx(tx)
 		stockRepoTx := u.stockRepo.WithTx(tx)
 		stockMutationRepoTx := u.stockMutationRepo.WithTx(tx)
 
-		for _, item := range req.Items {
-			// Find product
+		purchase := &entity.Purchase{
+			InvoiceNumber: req.InvoiceNumber,
+			SupplierID:    req.SupplierID,
+			PurchaseDate:  parsedDate,
+			TotalAmount:   totalAmount,
+			CreatedBy:     creatorID,
+		}
+		if err := purchaseRepoTx.Create(ctx, purchase); err != nil {
+			return err
+		}
+		purchaseID = purchase.ID
+
+		for i, item := range req.Items {
+			pi := prepared[i]
+
+			// Re-check product within the transaction to keep FIFO integrity
 			product, err := productRepoTx.FindById(ctx, item.ProductID)
 			if err != nil {
 				return errs.NewNotFound("product not found: " + item.ProductID)
@@ -81,33 +153,15 @@ func (u *purchaseUsecaseImpl) CreatePurchase(ctx context.Context, creatorID stri
 				return errs.NewConflict("cannot purchase an inactive product: " + product.Name)
 			}
 
-			// Find matching unit
-			var matchedUnit *entity.ProductUnit
-			for _, pu := range product.Units {
-				if pu.UnitID == item.UnitID {
-					matchedUnit = &pu
-					break
-				}
-			}
-			if matchedUnit == nil {
-				return errs.NewNotFound("product unit not found for the given product")
-			}
-			if !matchedUnit.IsActive {
-				return errs.NewConflict("cannot purchase with an inactive product unit")
-			}
-
-			// Conversion logic
-			qtyInBase := item.Quantity * matchedUnit.ConversionToBase
-			pricePerBase := item.PurchasePrice / matchedUnit.ConversionToBase
-
 			batch := &entity.PurchaseBatch{
+				PurchaseID:    &purchase.ID,
 				ProductID:     item.ProductID,
 				SupplierID:    req.SupplierID,
-				UnitID:        &matchedUnit.ID,
+				UnitID:        &pi.matchedUnit.ID,
 				UnitPrice:     &item.PurchasePrice,
-				InitialQty:    qtyInBase,
-				RemainingQty:  qtyInBase,
-				PurchasePrice: pricePerBase,
+				InitialQty:    pi.qtyInBase,
+				RemainingQty:  pi.qtyInBase,
+				PurchasePrice: pi.pricePerBase,
 				InvoiceNumber: req.InvoiceNumber,
 				PurchaseDate:  parsedDate,
 				CreatedBy:     creatorID,
@@ -116,7 +170,6 @@ func (u *purchaseUsecaseImpl) CreatePurchase(ctx context.Context, creatorID stri
 			if err := purchaseBatchRepoTx.Create(ctx, batch); err != nil {
 				return err
 			}
-			createdIDs = append(createdIDs, batch.ID)
 
 			// 1. Get current stock
 			var qtyBefore float64 = 0
@@ -126,7 +179,7 @@ func (u *purchaseUsecaseImpl) CreatePurchase(ctx context.Context, creatorID stri
 			}
 
 			// 2. Update stock cache
-			qtyAfter := qtyBefore + qtyInBase
+			qtyAfter := qtyBefore + pi.qtyInBase
 			stock := &entity.Stock{
 				ProductID:   item.ProductID,
 				QtyBaseUnit: qtyAfter,
@@ -143,7 +196,7 @@ func (u *purchaseUsecaseImpl) CreatePurchase(ctx context.Context, creatorID stri
 			mutation := &entity.StockMutation{
 				ProductID:   item.ProductID,
 				Type:        "in",
-				Qty:         qtyInBase,
+				Qty:         pi.qtyInBase,
 				QtyBefore:   qtyBefore,
 				QtyAfter:    qtyAfter,
 				Source:      "purchase",
@@ -164,69 +217,62 @@ func (u *purchaseUsecaseImpl) CreatePurchase(ctx context.Context, creatorID stri
 		return nil, txErr
 	}
 
-	responses := make([]model.PurchaseBatchResponse, 0, len(createdIDs))
-	for _, id := range createdIDs {
-		b, err := u.purchaseBatchRepo.FindByID(ctx, id)
-		if err != nil {
-			return nil, errs.NewInternal("failed to load created purchase batch")
-		}
-		responses = append(responses, model.ToPurchaseBatchResponse(b))
-	}
-
-	return responses, nil
+	return u.GetPurchaseDetail(ctx, purchaseID)
 }
 
-func (u *purchaseUsecaseImpl) GetPurchaseBatches(ctx context.Context, req model.GetPurchaseBatchesRequest) ([]model.PurchaseBatchResponse, utils.Pagination, error) {
-	batches, total, err := u.purchaseBatchRepo.FindPurchaseBatches(ctx, req)
+func (u *purchaseUsecaseImpl) GetPurchases(ctx context.Context, req model.GetPurchaseBatchesRequest) ([]model.PurchaseSummaryResponse, utils.Pagination, error) {
+	purchases, productNames, total, err := u.purchaseRepo.FindPurchases(ctx, req)
 	if err != nil {
-		return nil, utils.Pagination{}, errs.NewInternal("failed to fetch purchase batches: " + err.Error())
+		return nil, utils.Pagination{}, errs.NewInternal("failed to fetch purchases: " + err.Error())
 	}
 
-	responses := make([]model.PurchaseBatchResponse, 0, len(batches))
-	for _, b := range batches {
-		responses = append(responses, model.PurchaseBatchResponse{
-			ID: b.ID,
-			Product: model.PurchaseProductResponse{
-				ID:   b.ProductID,
-				Name: b.Product.Name,
-			},
-			Supplier: model.PurchaseSupplierResponse{
-				ID:   b.SupplierID,
-				Name: b.Supplier.Name,
-			},
-			Unit:              model.ToPurchaseUnitResponse(&b),
-			UnitPrice:         b.UnitPrice,
-			BaseUnit:          model.ToBaseUnitResponse(&b.Product.BaseUnit),
-			InitialQuantity:   b.InitialQty,
-			RemainingQuantity: b.RemainingQty,
-			PurchasePrice:     b.PurchasePrice,
-			InvoiceNumber:     b.InvoiceNumber,
-			PurchaseDate:      b.PurchaseDate,
-			Creator: model.PurchaseCreatorResponse{
-				ID:   b.CreatedBy,
-				Name: b.Creator.Name,
-			},
-			CreatedAt: b.CreatedAt,
-		})
+	responses := make([]model.PurchaseSummaryResponse, 0, len(purchases))
+	for _, p := range purchases {
+		responses = append(responses, model.ToPurchaseSummaryResponse(&p, productNames[p.ID]))
 	}
 
 	pagination := utils.BuildPagination(req.Page, req.Limit, total)
 	return responses, pagination, nil
 }
 
-func (u *purchaseUsecaseImpl) GetPurchaseBatchByID(ctx context.Context, id string) (*model.PurchaseBatchResponse, error) {
-	batch, err := u.purchaseBatchRepo.FindByID(ctx, id)
+func (u *purchaseUsecaseImpl) GetPurchaseDetail(ctx context.Context, id string) (*model.PurchaseDetailResponse, error) {
+	purchase, err := u.purchaseRepo.FindByID(ctx, id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, errs.NewNotFound("purchase batch not found")
+			return nil, errs.NewNotFound("purchase not found")
 		}
-		return nil, errs.NewInternal("failed to fetch purchase batch: " + err.Error())
+		return nil, errs.NewInternal("failed to fetch purchase: " + err.Error())
 	}
-	res := model.ToPurchaseBatchResponse(batch)
-	return &res, nil
+
+	batches, err := u.purchaseBatchRepo.FindByPurchaseID(ctx, id)
+	if err != nil {
+		return nil, errs.NewInternal("failed to fetch purchase items: " + err.Error())
+	}
+
+	items := make([]model.PurchaseBatchResponse, 0, len(batches))
+	for _, b := range batches {
+		items = append(items, model.ToPurchaseBatchResponse(&b))
+	}
+
+	return &model.PurchaseDetailResponse{
+		ID:            purchase.ID,
+		InvoiceNumber: purchase.InvoiceNumber,
+		PurchaseDate:  purchase.PurchaseDate,
+		Supplier: model.PurchaseSupplierResponse{
+			ID:   purchase.SupplierID,
+			Name: purchase.Supplier.Name,
+		},
+		TotalAmount: purchase.TotalAmount,
+		Creator: model.PurchaseCreatorResponse{
+			ID:   purchase.CreatedBy,
+			Name: purchase.Creator.Name,
+		},
+		CreatedAt: purchase.CreatedAt,
+		Items:     items,
+	}, nil
 }
 
-func (u *purchaseUsecaseImpl) UpdatePurchase(ctx context.Context, updaterID string, id string, req model.UpdatePurchaseRequest) (*model.PurchaseBatchResponse, error) {
+func (u *purchaseUsecaseImpl) UpdatePurchaseItem(ctx context.Context, updaterID string, id string, req model.UpdatePurchaseRequest) (*model.PurchaseBatchResponse, error) {
 	parsedDate, err := time.Parse("2006-01-02", req.PurchaseDate)
 	if err != nil {
 		return nil, errs.NewBadRequest("invalid purchase date format, must be YYYY-MM-DD")
@@ -243,6 +289,7 @@ func (u *purchaseUsecaseImpl) UpdatePurchase(ctx context.Context, updaterID stri
 
 	txErr := u.db.Transaction(func(tx *gorm.DB) error {
 		purchaseBatchRepoTx := u.purchaseBatchRepo.WithTx(tx)
+		purchaseRepoTx := u.purchaseRepo.WithTx(tx)
 		productRepoTx := u.productRepo.WithTx(tx)
 		stockRepoTx := u.stockRepo.WithTx(tx)
 		stockMutationRepoTx := u.stockMutationRepo.WithTx(tx)
@@ -260,9 +307,9 @@ func (u *purchaseUsecaseImpl) UpdatePurchase(ctx context.Context, updaterID stri
 		}
 
 		var matchedUnit *entity.ProductUnit
-		for _, pu := range product.Units {
-			if pu.UnitID == req.UnitID {
-				matchedUnit = &pu
+		for i := range product.Units {
+			if product.Units[i].UnitID == req.UnitID {
+				matchedUnit = &product.Units[i]
 				break
 			}
 		}
@@ -343,7 +390,35 @@ func (u *purchaseUsecaseImpl) UpdatePurchase(ctx context.Context, updaterID stri
 			}
 		}
 
-		return purchaseBatchRepoTx.Update(ctx, batch)
+		if err := purchaseBatchRepoTx.Update(ctx, batch); err != nil {
+			return err
+		}
+
+		// Keep the parent header in sync (supplier/invoice/date + recompute total)
+		if batch.PurchaseID != nil {
+			purchase, err := purchaseRepoTx.FindByID(ctx, *batch.PurchaseID)
+			if err != nil {
+				return errs.NewInternal("purchase header not found")
+			}
+			purchase.SupplierID = req.SupplierID
+			purchase.InvoiceNumber = req.InvoiceNumber
+			purchase.PurchaseDate = parsedDate
+
+			allBatches, err := purchaseBatchRepoTx.FindByPurchaseID(ctx, purchase.ID)
+			if err != nil {
+				return err
+			}
+			var total float64
+			for _, b := range allBatches {
+				total += b.InitialQty * b.PurchasePrice
+			}
+			purchase.TotalAmount = total
+			if err := purchaseRepoTx.Update(ctx, purchase); err != nil {
+				return err
+			}
+		}
+
+		return nil
 	})
 
 	if txErr != nil {
@@ -361,19 +436,95 @@ func (u *purchaseUsecaseImpl) UpdatePurchase(ctx context.Context, updaterID stri
 
 func (u *purchaseUsecaseImpl) DeletePurchase(ctx context.Context, deleterID string, id string) error {
 	txErr := u.db.Transaction(func(tx *gorm.DB) error {
+		purchaseRepoTx := u.purchaseRepo.WithTx(tx)
 		purchaseBatchRepoTx := u.purchaseBatchRepo.WithTx(tx)
 		stockRepoTx := u.stockRepo.WithTx(tx)
 		stockMutationRepoTx := u.stockMutationRepo.WithTx(tx)
 
-		// Fetch existing batch
+		// Fetch header
+		purchase, err := purchaseRepoTx.FindByID(ctx, id)
+		if err != nil {
+			return errs.NewNotFound("purchase not found")
+		}
+
+		// Fetch all its batches
+		batches, err := purchaseBatchRepoTx.FindByPurchaseID(ctx, id)
+		if err != nil {
+			return errs.NewInternal("failed to fetch purchase items: " + err.Error())
+		}
+
+		for _, b := range batches {
+			if b.RemainingQty < b.InitialQty {
+				return errs.NewConflict("cannot delete a purchase that has partially sold items")
+			}
+		}
+
+		for i := range batches {
+			batch := &batches[i]
+
+			// 1. Get current stock
+			var qtyBefore float64 = 0
+			currentStock, err := stockRepoTx.GetByProductID(ctx, batch.ProductID)
+			if err == nil {
+				qtyBefore = currentStock.QtyBaseUnit
+			}
+
+			// 2. Update stock cache
+			qtyAfter := qtyBefore - batch.InitialQty
+			stock := &entity.Stock{
+				ProductID:   batch.ProductID,
+				QtyBaseUnit: qtyAfter,
+			}
+			if err := stockRepoTx.UpsertStock(ctx, stock); err != nil {
+				return err
+			}
+
+			// 3. Log stock mutation
+			noteStr := "purchase deleted"
+			if batch.InvoiceNumber != nil {
+				noteStr += " (Invoice: " + *batch.InvoiceNumber + ")"
+			}
+			mutation := &entity.StockMutation{
+				ProductID:   batch.ProductID,
+				Type:        "out",
+				Qty:         batch.InitialQty,
+				QtyBefore:   qtyBefore,
+				QtyAfter:    qtyAfter,
+				Source:      "purchase",
+				ReferenceID: &batch.ID,
+				Note:        &noteStr,
+				CreatedBy:   deleterID,
+			}
+			if err := stockMutationRepoTx.Create(ctx, mutation); err != nil {
+				return err
+			}
+
+			if err := purchaseBatchRepoTx.Delete(ctx, batch.ID); err != nil {
+				return err
+			}
+		}
+
+		return purchaseRepoTx.Delete(ctx, purchase.ID)
+	})
+
+	return txErr
+}
+
+func (u *purchaseUsecaseImpl) DeletePurchaseItem(ctx context.Context, deleterID string, id string) error {
+	txErr := u.db.Transaction(func(tx *gorm.DB) error {
+		purchaseBatchRepoTx := u.purchaseBatchRepo.WithTx(tx)
+		purchaseRepoTx := u.purchaseRepo.WithTx(tx)
+		stockRepoTx := u.stockRepo.WithTx(tx)
+		stockMutationRepoTx := u.stockMutationRepo.WithTx(tx)
+
+		// Fetch batch
 		batch, err := purchaseBatchRepoTx.FindByID(ctx, id)
 		if err != nil {
 			return errs.NewNotFound("purchase batch not found")
 		}
 
-		hasBeenSold := batch.RemainingQty < batch.InitialQty
-		if hasBeenSold {
-			return errs.NewConflict("cannot delete a purchase batch that has been partially sold")
+		if batch.RemainingQty < batch.InitialQty {
+			return errs.NewConflict("cannot delete a purchase item that has been partially sold")
 		}
 
 		// 1. Get current stock
@@ -394,7 +545,7 @@ func (u *purchaseUsecaseImpl) DeletePurchase(ctx context.Context, deleterID stri
 		}
 
 		// 3. Log stock mutation
-		noteStr := "purchase deleted"
+		noteStr := "purchase item deleted"
 		if batch.InvoiceNumber != nil {
 			noteStr += " (Invoice: " + *batch.InvoiceNumber + ")"
 		}
@@ -413,7 +564,32 @@ func (u *purchaseUsecaseImpl) DeletePurchase(ctx context.Context, deleterID stri
 			return err
 		}
 
-		return purchaseBatchRepoTx.Delete(ctx, id)
+		if err := purchaseBatchRepoTx.Delete(ctx, batch.ID); err != nil {
+			return err
+		}
+
+		// Recompute header total; delete header when the last item is removed
+		if batch.PurchaseID != nil {
+			purchase, err := purchaseRepoTx.FindByID(ctx, *batch.PurchaseID)
+			if err != nil {
+				return errs.NewInternal("purchase header not found")
+			}
+			allBatches, err := purchaseBatchRepoTx.FindByPurchaseID(ctx, purchase.ID)
+			if err != nil {
+				return err
+			}
+			if len(allBatches) == 0 {
+				return purchaseRepoTx.Delete(ctx, purchase.ID)
+			}
+			var total float64
+			for _, b := range allBatches {
+				total += b.InitialQty * b.PurchasePrice
+			}
+			purchase.TotalAmount = total
+			return purchaseRepoTx.Update(ctx, purchase)
+		}
+
+		return nil
 	})
 
 	return txErr
