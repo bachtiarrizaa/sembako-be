@@ -51,7 +51,7 @@ func (c *PurchaseController) CreatePurchase(ctx *gin.Context) {
 	utils.SuccessResponse(ctx, http.StatusCreated, "purchase recorded successfully", res)
 }
 
-func (c *PurchaseController) GetPurchaseBatches(ctx *gin.Context) {
+func (c *PurchaseController) GetPurchases(ctx *gin.Context) {
 	var req model.GetPurchaseBatchesRequest
 	if err := ctx.ShouldBindQuery(&req); err != nil {
 		utils.ErrorResponse(ctx, http.StatusBadRequest, "invalid query parameters")
@@ -63,32 +63,32 @@ func (c *PurchaseController) GetPurchaseBatches(ctx *gin.Context) {
 		return
 	}
 
-	batches, pagination, err := c.usecase.GetPurchaseBatches(ctx.Request.Context(), req)
+	purchases, pagination, err := c.usecase.GetPurchases(ctx.Request.Context(), req)
 	if err != nil {
 		utils.HandleError(ctx, err)
 		return
 	}
 
-	utils.SuccessResponseWithPagination(ctx, http.StatusOK, "purchase batches retrieved successfully", batches, pagination)
+	utils.SuccessResponseWithPagination(ctx, http.StatusOK, "purchases retrieved successfully", purchases, pagination)
 }
 
-func (c *PurchaseController) GetPurchaseBatchByID(ctx *gin.Context) {
+func (c *PurchaseController) GetPurchaseDetail(ctx *gin.Context) {
 	id := ctx.Param("id")
 	if id == "" {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, "missing purchase batch ID")
+		utils.ErrorResponse(ctx, http.StatusBadRequest, "missing purchase ID")
 		return
 	}
 
-	batch, err := c.usecase.GetPurchaseBatchByID(ctx.Request.Context(), id)
+	purchase, err := c.usecase.GetPurchaseDetail(ctx.Request.Context(), id)
 	if err != nil {
 		utils.HandleError(ctx, err)
 		return
 	}
 
-	utils.SuccessResponse(ctx, http.StatusOK, "purchase batch retrieved successfully", batch)
+	utils.SuccessResponse(ctx, http.StatusOK, "purchase retrieved successfully", purchase)
 }
 
-func (c *PurchaseController) UpdatePurchase(ctx *gin.Context) {
+func (c *PurchaseController) UpdatePurchaseItem(ctx *gin.Context) {
 	userID, exists := middleware.GetUserID(ctx)
 	if !exists {
 		utils.ErrorResponse(ctx, http.StatusUnauthorized, "unauthorized")
@@ -97,7 +97,7 @@ func (c *PurchaseController) UpdatePurchase(ctx *gin.Context) {
 
 	id := ctx.Param("id")
 	if id == "" {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, "missing purchase batch ID")
+		utils.ErrorResponse(ctx, http.StatusBadRequest, "missing purchase item ID")
 		return
 	}
 
@@ -112,13 +112,13 @@ func (c *PurchaseController) UpdatePurchase(ctx *gin.Context) {
 		return
 	}
 
-	res, err := c.usecase.UpdatePurchase(ctx.Request.Context(), userID.String(), id, req)
+	res, err := c.usecase.UpdatePurchaseItem(ctx.Request.Context(), userID.String(), id, req)
 	if err != nil {
 		utils.HandleError(ctx, err)
 		return
 	}
 
-	utils.SuccessResponse(ctx, http.StatusOK, "purchase batch updated successfully", res)
+	utils.SuccessResponse(ctx, http.StatusOK, "purchase item updated successfully", res)
 }
 
 func (c *PurchaseController) DeletePurchase(ctx *gin.Context) {
@@ -130,7 +130,7 @@ func (c *PurchaseController) DeletePurchase(ctx *gin.Context) {
 
 	id := ctx.Param("id")
 	if id == "" {
-		utils.ErrorResponse(ctx, http.StatusBadRequest, "missing purchase batch ID")
+		utils.ErrorResponse(ctx, http.StatusBadRequest, "missing purchase ID")
 		return
 	}
 
@@ -140,5 +140,27 @@ func (c *PurchaseController) DeletePurchase(ctx *gin.Context) {
 		return
 	}
 
-	utils.SuccessResponse(ctx, http.StatusOK, "purchase batch deleted successfully", nil)
+	utils.SuccessResponse(ctx, http.StatusOK, "purchase deleted successfully", nil)
+}
+
+func (c *PurchaseController) DeletePurchaseItem(ctx *gin.Context) {
+	userID, exists := middleware.GetUserID(ctx)
+	if !exists {
+		utils.ErrorResponse(ctx, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+
+	id := ctx.Param("id")
+	if id == "" {
+		utils.ErrorResponse(ctx, http.StatusBadRequest, "missing purchase item ID")
+		return
+	}
+
+	err := c.usecase.DeletePurchaseItem(ctx.Request.Context(), userID.String(), id)
+	if err != nil {
+		utils.HandleError(ctx, err)
+		return
+	}
+
+	utils.SuccessResponse(ctx, http.StatusOK, "purchase item deleted successfully", nil)
 }

@@ -39,13 +39,14 @@ func TestPurchaseUsecase_CRUD(t *testing.T) {
 	defer db.Rollback() // Rollback everything at the end of test
 
 	purchaseBatchRepo := repository.NewPurchaseBatchRepository(db)
+	purchaseRepo := repository.NewPurchaseRepository(db)
 	productRepo := repository.NewProductRepository(db)
 	supplierRepo := repository.NewSupplierRepository(db)
 
 	stockRepo := repository.NewStockRepository(db)
 	stockMutationRepo := repository.NewStockMutationRepository(db)
 
-	purchaseUsecase := usecase.NewPurchaseUsecase(db, purchaseBatchRepo, productRepo, supplierRepo, stockRepo, stockMutationRepo)
+	purchaseUsecase := usecase.NewPurchaseUsecase(db, purchaseRepo, purchaseBatchRepo, productRepo, supplierRepo, stockRepo, stockMutationRepo)
 
 	// Generate random UUIDs for clean isolation
 	roleID := uuid.New().String()
@@ -124,6 +125,7 @@ func TestPurchaseUsecase_CRUD(t *testing.T) {
 	}
 
 	ctx := context.Background()
+	var createdPurchaseID string
 	var createdBatchID string
 
 	t.Run("Create Purchase - Success", func(t *testing.T) {
@@ -145,11 +147,12 @@ func TestPurchaseUsecase_CRUD(t *testing.T) {
 			t.Fatalf("expected no error, got: %v", err)
 		}
 
-		if len(res) != 1 {
-			t.Fatalf("expected 1 created batch, got: %d", len(res))
+		if len(res.Items) != 1 {
+			t.Fatalf("expected 1 created batch, got: %d", len(res.Items))
 		}
 
-		batch := res[0]
+		batch := res.Items[0]
+		createdPurchaseID = res.ID
 		createdBatchID = batch.ID
 		if batch.InitialQuantity != 48.0 { // 2 Dus * 24 Pcs
 			t.Errorf("expected initial quantity 48, got: %f", batch.InitialQuantity)
@@ -209,7 +212,7 @@ func TestPurchaseUsecase_CRUD(t *testing.T) {
 			PurchasePrice: 120000.0,
 		}
 
-		updated, err := purchaseUsecase.UpdatePurchase(ctx, user.ID, createdBatchID, req)
+		updated, err := purchaseUsecase.UpdatePurchaseItem(ctx, user.ID, createdBatchID, req)
 		if err != nil {
 			t.Fatalf("expected no error, got: %v", err)
 		}
@@ -249,7 +252,7 @@ func TestPurchaseUsecase_CRUD(t *testing.T) {
 			PurchasePrice: 120000.0,
 		}
 
-		_, err := purchaseUsecase.UpdatePurchase(ctx, user.ID, createdBatchID, req)
+		_, err := purchaseUsecase.UpdatePurchaseItem(ctx, user.ID, createdBatchID, req)
 		if err == nil {
 			t.Errorf("expected error updating quantity of a partially sold batch, got nil")
 		}
@@ -266,7 +269,7 @@ func TestPurchaseUsecase_CRUD(t *testing.T) {
 			PurchasePrice: 120000.0,
 		}
 
-		updated, err := purchaseUsecase.UpdatePurchase(ctx, user.ID, createdBatchID, req)
+		updated, err := purchaseUsecase.UpdatePurchaseItem(ctx, user.ID, createdBatchID, req)
 		if err != nil {
 			t.Fatalf("expected no error updating invoice of a partially sold batch, got: %v", err)
 		}
@@ -277,7 +280,7 @@ func TestPurchaseUsecase_CRUD(t *testing.T) {
 	})
 
 	t.Run("Delete Purchase - Partially Sold - Failure", func(t *testing.T) {
-		err := purchaseUsecase.DeletePurchase(ctx, user.ID, createdBatchID)
+		err := purchaseUsecase.DeletePurchase(ctx, user.ID, createdPurchaseID)
 		if err == nil {
 			t.Errorf("expected error deleting partially sold batch, got nil")
 		}
@@ -295,7 +298,7 @@ func TestPurchaseUsecase_CRUD(t *testing.T) {
 			t.Fatalf("failed to reset remaining qty: %v", err)
 		}
 
-		err := purchaseUsecase.DeletePurchase(ctx, user.ID, createdBatchID)
+		err := purchaseUsecase.DeletePurchase(ctx, user.ID, createdPurchaseID)
 		if err != nil {
 			t.Fatalf("expected no error deleting unsold batch, got: %v", err)
 		}

@@ -12,6 +12,7 @@ type PurchaseBatchRepository interface {
 	Create(ctx context.Context, batch *entity.PurchaseBatch) error
 	FindPurchaseBatches(ctx context.Context, req model.GetPurchaseBatchesRequest) ([]entity.PurchaseBatch, int64, error)
 	FindByID(ctx context.Context, id string) (*entity.PurchaseBatch, error)
+	FindByPurchaseID(ctx context.Context, purchaseID string) ([]entity.PurchaseBatch, error)
 	Update(ctx context.Context, batch *entity.PurchaseBatch) error
 	Delete(ctx context.Context, id string) error
 	HasPurchaseReferences(ctx context.Context, productID string) (bool, error)
@@ -97,6 +98,25 @@ func (r *purchaseBatchRepositoryImpl) FindByID(ctx context.Context, id string) (
 		return nil, err
 	}
 	return &batch, nil
+}
+
+func (r *purchaseBatchRepositoryImpl) FindByPurchaseID(ctx context.Context, purchaseID string) ([]entity.PurchaseBatch, error) {
+	var batches []entity.PurchaseBatch
+	if err := r.db.WithContext(ctx).
+		Model(&entity.PurchaseBatch{}).
+		Select("purchase_batches.*, u.id AS unit_source_id, u.name AS unit_source_name").
+		Joins("LEFT JOIN product_units pu ON pu.id = purchase_batches.unit_id").
+		Joins("LEFT JOIN units u ON u.id = pu.unit_id").
+		Preload("Product").
+		Preload("Product.BaseUnit").
+		Preload("Supplier").
+		Preload("Creator").
+		Preload("Unit.Unit").
+		Order("purchase_batches.created_at ASC").
+		Find(&batches, "purchase_batches.purchase_id = ?", purchaseID).Error; err != nil {
+		return nil, err
+	}
+	return batches, nil
 }
 
 func (r *purchaseBatchRepositoryImpl) Update(ctx context.Context, batch *entity.PurchaseBatch) error {

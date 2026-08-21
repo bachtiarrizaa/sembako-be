@@ -18,9 +18,10 @@ func registerPurchaseRoutes(
 	purchase := router.Group("/purchases", middleware.AuthMiddleware(jwtSecret, blacklistRepo))
 	{
 		purchase.POST("", middleware.RequirePermission(permissionUsecase, "purchases:create"), controller.CreatePurchase)
-		purchase.GET("", middleware.RequirePermission(permissionUsecase, "purchases:read"), controller.GetPurchaseBatches)
-		purchase.GET("/:id", middleware.RequirePermission(permissionUsecase, "purchases:read"), controller.GetPurchaseBatchByID)
-		purchase.PUT("/:id", middleware.RequirePermission(permissionUsecase, "purchases:update"), controller.UpdatePurchase)
+		purchase.GET("", middleware.RequirePermission(permissionUsecase, "purchases:read"), controller.GetPurchases)
+		purchase.GET("/:id", middleware.RequirePermission(permissionUsecase, "purchases:read"), controller.GetPurchaseDetail)
+		purchase.PUT("/items/:id", middleware.RequirePermission(permissionUsecase, "purchases:update"), controller.UpdatePurchaseItem)
+		purchase.DELETE("/items/:id", middleware.RequirePermission(permissionUsecase, "purchases:delete"), controller.DeletePurchaseItem)
 		purchase.DELETE("/:id", middleware.RequirePermission(permissionUsecase, "purchases:delete"), controller.DeletePurchase)
 	}
 }
