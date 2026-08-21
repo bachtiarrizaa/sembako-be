@@ -20,6 +20,7 @@ type ProductUnitRepository interface {
 	WithTx(tx *gorm.DB) ProductUnitRepository
 	// TODO: Pindahkan ke TransactionItemRepository ketika modul transaksi sudah diimplementasi.
 	HasTransactionReferences(ctx context.Context, unitID string) (bool, error)
+	HasPurchaseReferences(ctx context.Context, unitID string) (bool, error)
 }
 
 type productUnitRepositoryImpl struct {
@@ -50,6 +51,7 @@ func (r *productUnitRepositoryImpl) FindByProductID(ctx context.Context, product
 	if err := r.db.WithContext(ctx).
 		Preload("Unit").
 		Where("product_id = ?", productID).
+		Order("product_units.is_base_unit DESC, product_units.conversion_to_base ASC, product_units.id ASC").
 		Find(&units).Error; err != nil {
 		return nil, err
 	}
@@ -94,6 +96,17 @@ func (r *productUnitRepositoryImpl) HasTransactionReferences(ctx context.Context
 	var count int64
 	err := r.db.WithContext(ctx).Table("transaction_items").
 		Where("product_unit_id = ?", unitID).
+		Count(&count).Error
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}
+
+func (r *productUnitRepositoryImpl) HasPurchaseReferences(ctx context.Context, unitID string) (bool, error) {
+	var count int64
+	err := r.db.WithContext(ctx).Table("purchase_batches").
+		Where("unit_id = ?", unitID).
 		Count(&count).Error
 	if err != nil {
 		return false, err

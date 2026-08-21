@@ -60,12 +60,20 @@ func (r *productRepositoryImpl) FindProducts(ctx context.Context, req model.GetP
 	}
 
 	offset := (req.Page - 1) * req.Limit
-	if err := query.
+	query = query.
 		Preload("Category").
 		Preload("BaseUnit").
-		Preload("Units").
-		Preload("Units.Unit").
-		Preload("Stock").
+		Preload("Stock")
+
+	if req.Include == "units" {
+		query = query.
+			Preload("Units", func(db *gorm.DB) *gorm.DB {
+				return db.Order("product_units.is_base_unit DESC, product_units.conversion_to_base ASC, product_units.id ASC")
+			}).
+			Preload("Units.Unit")
+	}
+
+	if err := query.
 		Order("created_at DESC").
 		Offset(offset).Limit(req.Limit).
 		Find(&products).Error; err != nil {
@@ -80,7 +88,9 @@ func (r *productRepositoryImpl) FindById(ctx context.Context, id string) (*entit
 	if err := r.db.WithContext(ctx).
 		Preload("Category").
 		Preload("BaseUnit").
-		Preload("Units").
+		Preload("Units", func(db *gorm.DB) *gorm.DB {
+			return db.Order("product_units.is_base_unit DESC, product_units.conversion_to_base ASC, product_units.id ASC")
+		}).
 		Preload("Units.Unit").
 		Preload("Stock").
 		First(&product, "id = ?", id).Error; err != nil {

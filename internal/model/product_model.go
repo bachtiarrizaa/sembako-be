@@ -10,6 +10,7 @@ type GetProductsRequest struct {
 	PaginationRequest
 	IsActive   *bool  `form:"is_active"`
 	CategoryID string `form:"category_id"`
+	Include    string `form:"include"`
 }
 
 type CreateProductUnitRequest struct {
@@ -28,15 +29,24 @@ type CreateProductRequest struct {
 }
 
 type UpdateProductUnitRequest struct {
+	ID               *string `json:"id" validate:"omitempty,uuid"`
+	UnitID           string  `json:"unitId" validate:"required,uuid"`
 	ConversionToBase float64 `json:"conversionToBase" validate:"required,gt=0"`
 	SellingPrice     float64 `json:"sellingPrice" validate:"required,gt=0"`
+	IsBaseUnit       bool    `json:"isBaseUnit"`
+	IsActive         bool    `json:"isActive"`
 }
 
 type UpdateProductRequest struct {
-	CategoryID             string   `json:"categoryId" form:"categoryId" validate:"required,uuid"`
-	Name                   string   `json:"name" form:"name" validate:"required,min=2,max=150"`
-	MinimumStock           *float64 `json:"minimumStock" form:"minimumStock" validate:"omitempty,gte=0"`
-	MarginThresholdPercent *float64 `json:"marginThresholdPercent" form:"marginThresholdPercent" validate:"omitempty,gte=0,lte=100"`
+	CategoryID             string                     `json:"categoryId" form:"categoryId" validate:"required,uuid"`
+	Name                   string                     `json:"name" form:"name" validate:"required,min=2,max=150"`
+	MinimumStock           *float64                   `json:"minimumStock" form:"minimumStock" validate:"omitempty,gte=0"`
+	MarginThresholdPercent *float64                   `json:"marginThresholdPercent" form:"marginThresholdPercent" validate:"omitempty,gte=0,lte=100"`
+	Units                  []UpdateProductUnitRequest `json:"units" validate:"required,min=1,dive"`
+}
+
+type UpdateProductStatusRequest struct {
+	IsActive *bool `json:"isActive" validate:"required"`
 }
 
 type AddProductUnitRequest struct {
@@ -73,26 +83,29 @@ type ProductResponse struct {
 	MinimumStock           *float64                  `json:"minimumStock"`
 	MarginThresholdPercent *float64                  `json:"marginThresholdPercent"`
 	IsActive               bool                      `json:"isActive"`
-	Units                  []ProductUnitResponse     `json:"units"`
+	Units                  []ProductUnitResponse     `json:"units,omitempty"`
 	Stock                  float64                   `json:"stock"`
 	CreatedAt              time.Time                 `json:"createdAt"`
 	UpdatedAt              time.Time                 `json:"updatedAt"`
 }
 
 func ToProductResponse(product *entity.Product) ProductResponse {
-	units := make([]ProductUnitResponse, 0, len(product.Units))
-	for _, pu := range product.Units {
-		units = append(units, ProductUnitResponse{
-			ID: pu.ID,
-			Unit: UnitInProductResponse{
-				ID:   pu.Unit.ID,
-				Name: pu.Unit.Name,
-			},
-			ConversionToBase: pu.ConversionToBase,
-			SellingPrice:     pu.SellingPrice,
-			IsBaseUnit:       pu.IsBaseUnit,
-			IsActive:         pu.IsActive,
-		})
+	var units []ProductUnitResponse
+	if len(product.Units) > 0 {
+		units = make([]ProductUnitResponse, 0, len(product.Units))
+		for _, pu := range product.Units {
+			units = append(units, ProductUnitResponse{
+				ID: pu.ID,
+				Unit: UnitInProductResponse{
+					ID:   pu.Unit.ID,
+					Name: pu.Unit.Name,
+				},
+				ConversionToBase: pu.ConversionToBase,
+				SellingPrice:     pu.SellingPrice,
+				IsBaseUnit:       pu.IsBaseUnit,
+				IsActive:         pu.IsActive,
+			})
+		}
 	}
 
 	var stockVal float64 = 0

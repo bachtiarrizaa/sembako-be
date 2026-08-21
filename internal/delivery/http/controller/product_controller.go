@@ -96,8 +96,22 @@ func (c *ProductController) GetProductByID(ctx *gin.Context) {
 
 func (c *ProductController) UpdateProductStatus(ctx *gin.Context) {
 	id := ctx.Param("id")
+	if id == "" {
+		utils.ErrorResponse(ctx, http.StatusBadRequest, "invalid id")
+		return
+	}
 
-	res, err := c.usecase.UpdateProductStatus(ctx.Request.Context(), id)
+	var req model.UpdateProductStatusRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		utils.ErrorResponse(ctx, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	if err := c.validator.Struct(req); err != nil {
+		utils.ErrorResponse(ctx, http.StatusUnprocessableEntity, utils.FormatValidationError(err))
+		return
+	}
+
+	res, err := c.usecase.UpdateProductStatus(ctx.Request.Context(), id, *req.IsActive)
 	if err != nil {
 		handleError(ctx, err)
 		return
@@ -117,6 +131,12 @@ func (c *ProductController) UpdateProduct(ctx *gin.Context) {
 		utils.ErrorResponse(ctx, http.StatusBadRequest, "invalid request body")
 		return
 	}
+
+	if err := json.Unmarshal([]byte(ctx.PostForm("units")), &req.Units); err != nil {
+		utils.ErrorResponse(ctx, http.StatusBadRequest, "invalid units format")
+		return
+	}
+
 	if err := c.validator.Struct(req); err != nil {
 		utils.ErrorResponse(ctx, http.StatusUnprocessableEntity, utils.FormatValidationError(err))
 		return

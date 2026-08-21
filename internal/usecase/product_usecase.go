@@ -151,41 +151,166 @@ func (u *ProductUsecase) GetProductByID(ctx context.Context, id string) (*model.
 }
 
 func (u *ProductUsecase) UpdateProduct(ctx context.Context, id string, req model.UpdateProductRequest, imagePath *string) (*model.ProductResponse, error) {
-	product, err := u.productRepo.FindById(ctx, id)
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, errs.NewNotFound("product not found")
+	if err := validateUpdateProductUnits(req.Units); err != nil {
+		return nil, err
+	}
+
+	var product *entity.Product
+
+	txErr := u.db.Transaction(func(tx *gorm.DB) error {
+		productRepoTx := u.productRepo.WithTx(tx)
+		productUnitRepoTx := u.productUnitRepo.WithTx(tx)
+
+		var err error
+		product, err = productRepoTx.FindById(ctx, id)
+		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return errs.NewNotFound("product not found")
+			}
+			return err
 		}
-		return nil, errs.NewInternal("failed to fetch product")
-	}
 
-	existing, err := u.productRepo.FindByName(ctx, req.Name)
-	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, errs.NewInternal("failed to check existing product")
-	}
-	if existing != nil && existing.ID != id {
-		return nil, errs.NewConflict("product name already exists")
-	}
-
-	var oldImage *string
-	if imagePath != nil {
-		if product.Image != nil {
-			oldImage = product.Image
+		existing, err := productRepoTx.FindByName(ctx, req.Name)
+		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+			return err
 		}
-		product.Image = imagePath
-	}
+		if existing != nil && existing.ID != id {
+			return errs.NewConflict("product name already exists")
+		}
 
-	product.CategoryID = req.CategoryID
-	product.Name = req.Name
-	product.MinimumStock = req.MinimumStock
-	product.MarginThresholdPercent = req.MarginThresholdPercent
+		// Update base unit ID
+		var baseUnitID string
+		for _, ur := range req.Units {
+			if ur.IsBaseUnit {
+				baseUnitID = ur.UnitID
+				break
+			}
+		}
 
-	if err := u.productRepo.Update(ctx, product); err != nil {
-		return nil, errs.NewInternal("failed to update product")
-	}
+		var oldImage *string
+		if imagePath != nil {
+			if product.Image != nil {
+				oldImage = product.Image
+			}
+			product.Image = imagePath
+		}
 
-	if oldImage != nil {
-		utils.DeleteFile(*oldImage)
+		product.CategoryID = req.CategoryID
+		product.Name = req.Name
+		product.MinimumStock = req.MinimumStock
+		product.MarginThresholdPercent = req.MarginThresholdPercent
+		product.BaseUnitID = baseUnitID
+
+		if err := productRepoTx.Update(ctx, product); err != nil {
+			return err
+		}
+
+		if oldImage != nil {
+			utils.DeleteFile(*oldImage)
+		}
+
+		// Retrieve all existing product units
+		existingUnits, err := productUnitRepoTx.FindByProductID(ctx, product.ID)
+		if err != nil {
+			return err
+		}
+
+		existingUnitsMap := make(map[string]*entity.ProductUnit)
+		existingUnitsByUnitID := make(map[string]*entity.ProductUnit)
+		for i := range existingUnits {
+			existingUnitsMap[existingUnits[i].ID] = &existingUnits[i]
+			existingUnitsByUnitID[existingUnits[i].UnitID] = &existingUnits[i]
+		}
+
+		retainedUnitIDs := make(map[string]bool)
+
+		// Sync / Upsert units
+		for _, ur := range req.Units {
+			if ur.ID != nil && *ur.ID != "" {
+				// Update existing
+				eu, exists := existingUnitsMap[*ur.ID]
+				if !exists {
+					return errs.NewNotFound("product unit not found: " + *ur.ID)
+				}
+				eu.UnitID = ur.UnitID
+				eu.ConversionToBase = ur.ConversionToBase
+				eu.SellingPrice = ur.SellingPrice
+				eu.IsBaseUnit = ur.IsBaseUnit
+				eu.IsActive = ur.IsActive
+
+				if err := productUnitRepoTx.Update(ctx, eu); err != nil {
+					return err
+				}
+				retainedUnitIDs[eu.ID] = true
+			} else {
+				// Insert or update fallback by UnitID
+				eu, exists := existingUnitsByUnitID[ur.UnitID]
+				if exists {
+					eu.ConversionToBase = ur.ConversionToBase
+					eu.SellingPrice = ur.SellingPrice
+					eu.IsBaseUnit = ur.IsBaseUnit
+					eu.IsActive = ur.IsActive
+
+					if err := productUnitRepoTx.Update(ctx, eu); err != nil {
+						return err
+					}
+					retainedUnitIDs[eu.ID] = true
+				} else {
+					newUnit := entity.ProductUnit{
+						ProductID:        product.ID,
+						UnitID:           ur.UnitID,
+						ConversionToBase: ur.ConversionToBase,
+						SellingPrice:     ur.SellingPrice,
+						IsBaseUnit:       ur.IsBaseUnit,
+						IsActive:         ur.IsActive,
+					}
+					if err := productUnitRepoTx.Create(ctx, &newUnit); err != nil {
+						return err
+					}
+				}
+			}
+		}
+
+		// Delete units not in the request
+		for _, eu := range existingUnits {
+			if !retainedUnitIDs[eu.ID] {
+				// Reference check before deletion
+				hasTransRef, err := productUnitRepoTx.HasTransactionReferences(ctx, eu.ID)
+				if err != nil {
+					return err
+				}
+				if hasTransRef {
+					return errs.NewConflict("satuan " + eu.Unit.Name + " tidak dapat dihapus karena sudah memiliki riwayat transaksi, silakan nonaktifkan saja")
+				}
+
+				hasPurchRef, err := productUnitRepoTx.HasPurchaseReferences(ctx, eu.ID)
+				if err != nil {
+					return err
+				}
+				if hasPurchRef {
+					return errs.NewConflict("satuan " + eu.Unit.Name + " tidak dapat dihapus karena sudah memiliki riwayat pembelian, silakan nonaktifkan saja")
+				}
+
+				if err := productUnitRepoTx.Delete(ctx, eu.ID); err != nil {
+					return err
+				}
+			}
+		}
+
+		return nil
+	})
+
+	if txErr != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(txErr, &pgErr) {
+			if pgErr.Code == "23505" {
+				return nil, errs.NewConflict("product unit has duplicate unit assignment")
+			}
+		}
+		if appErr, ok := txErr.(*errs.AppError); ok {
+			return nil, appErr
+		}
+		return nil, errs.NewInternal("failed to update product: " + txErr.Error())
 	}
 
 	updated, err := u.productRepo.FindById(ctx, product.ID)
@@ -267,7 +392,35 @@ func validateProductUnits(units []model.CreateProductUnitRequest) error {
 	return nil
 }
 
-func (u *ProductUsecase) UpdateProductStatus(ctx context.Context, id string) (*model.ProductResponse, error) {
+func validateUpdateProductUnits(units []model.UpdateProductUnitRequest) error {
+	baseUnitCount := 0
+	seenUnitID := make(map[string]bool)
+
+	for _, u := range units {
+		if seenUnitID[u.UnitID] {
+			return errs.NewBadRequest("duplicate unit in product units")
+		}
+		seenUnitID[u.UnitID] = true
+
+		if u.IsBaseUnit {
+			baseUnitCount++
+			if u.ConversionToBase != 1 {
+				return errs.NewBadRequest("base unit must have conversionToBase = 1")
+			}
+		}
+	}
+
+	if baseUnitCount == 0 {
+		return errs.NewBadRequest("exactly one unit must be marked as base unit")
+	}
+	if baseUnitCount > 1 {
+		return errs.NewBadRequest("only one unit can be marked as base unit")
+	}
+
+	return nil
+}
+
+func (u *ProductUsecase) UpdateProductStatus(ctx context.Context, id string, isActive bool) (*model.ProductResponse, error) {
 	product, err := u.productRepo.FindById(ctx, id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -276,36 +429,12 @@ func (u *ProductUsecase) UpdateProductStatus(ctx context.Context, id string) (*m
 		return nil, errs.NewInternal("failed to fetch product")
 	}
 
-	product.IsActive = !product.IsActive
+	product.IsActive = isActive
 
-	txErr := u.db.Transaction(func(tx *gorm.DB) error {
-		productRepoTx := u.productRepo.WithTx(tx)
-		productUnitRepoTx := u.productUnitRepo.WithTx(tx)
-
-		if err := productRepoTx.Update(ctx, product); err != nil {
-			return err
-		}
-
-		if !product.IsActive {
-			if err := productUnitRepoTx.DeactivateAllByProductID(ctx, product.ID); err != nil {
-				return err
-			}
-		} else if err := productUnitRepoTx.ActivateAllByProductID(ctx, product.ID); err != nil {
-			return err
-		}
-
-		return nil
-	})
-
-	if txErr != nil {
+	if err := u.productRepo.Update(ctx, product); err != nil {
 		return nil, errs.NewInternal("failed to update product status")
 	}
 
-	updated, err := u.productRepo.FindById(ctx, product.ID)
-	if err != nil {
-		return nil, errs.NewInternal("failed to load updated product")
-	}
-
-	res := model.ToProductResponse(updated)
+	res := model.ToProductResponse(product)
 	return &res, nil
 }
