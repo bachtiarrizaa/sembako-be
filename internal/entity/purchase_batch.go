@@ -6,6 +6,7 @@ import (
 
 type PurchaseBatch struct {
 	ID             string       `gorm:"type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
+	PurchaseID     *string      `gorm:"column:purchase_id;type:uuid" json:"purchaseId"`
 	ProductID      string       `gorm:"column:product_id;type:uuid;not null" json:"productId"`
 	Product        Product      `gorm:"foreignKey:ProductID" json:"product"`
 	SupplierID     string       `gorm:"column:supplier_id;type:uuid;not null" json:"supplierId"`

@@ -59,10 +59,34 @@ type PurchaseBatchResponse struct {
 	InitialQuantity   float64                  `json:"initialQuantity"`
 	RemainingQuantity float64                  `json:"remainingQuantity"`
 	PurchasePrice     float64                  `json:"purchasePrice"`
+	Total             float64                  `json:"total"`
 	InvoiceNumber     *string                  `json:"invoiceNumber"`
 	PurchaseDate      time.Time                `json:"purchaseDate"`
 	Creator           PurchaseCreatorResponse  `json:"creator"`
 	CreatedAt         time.Time                `json:"createdAt"`
+}
+
+type PurchaseSummaryResponse struct {
+	ID            string                   `json:"id"`
+	InvoiceNumber *string                  `json:"invoiceNumber"`
+	PurchaseDate  time.Time                `json:"purchaseDate"`
+	Supplier      PurchaseSupplierResponse `json:"supplier"`
+	Products      []string                 `json:"products"`
+	ItemCount     int                      `json:"itemCount"`
+	TotalAmount   float64                  `json:"totalAmount"`
+	Creator       PurchaseCreatorResponse  `json:"creator"`
+	CreatedAt     time.Time                `json:"createdAt"`
+}
+
+type PurchaseDetailResponse struct {
+	ID            string                   `json:"id"`
+	InvoiceNumber *string                  `json:"invoiceNumber"`
+	PurchaseDate  time.Time                `json:"purchaseDate"`
+	Supplier      PurchaseSupplierResponse `json:"supplier"`
+	TotalAmount   float64                  `json:"totalAmount"`
+	Creator       PurchaseCreatorResponse  `json:"creator"`
+	CreatedAt     time.Time                `json:"createdAt"`
+	Items         []PurchaseBatchResponse  `json:"items"`
 }
 
 type GetPurchaseBatchesRequest struct {
@@ -112,6 +136,7 @@ func ToPurchaseBatchResponse(b *entity.PurchaseBatch) PurchaseBatchResponse {
 		InitialQuantity:   b.InitialQty,
 		RemainingQuantity: b.RemainingQty,
 		PurchasePrice:     b.PurchasePrice,
+		Total:             b.InitialQty * b.PurchasePrice,
 		InvoiceNumber:     b.InvoiceNumber,
 		PurchaseDate:      b.PurchaseDate,
 		Creator: PurchaseCreatorResponse{
@@ -119,5 +144,25 @@ func ToPurchaseBatchResponse(b *entity.PurchaseBatch) PurchaseBatchResponse {
 			Name: b.Creator.Name,
 		},
 		CreatedAt: b.CreatedAt,
+	}
+}
+
+func ToPurchaseSummaryResponse(p *entity.Purchase, productNames []string) PurchaseSummaryResponse {
+	return PurchaseSummaryResponse{
+		ID:            p.ID,
+		InvoiceNumber: p.InvoiceNumber,
+		PurchaseDate:  p.PurchaseDate,
+		Supplier: PurchaseSupplierResponse{
+			ID:   p.SupplierID,
+			Name: p.Supplier.Name,
+		},
+		Products:    productNames,
+		ItemCount:   len(productNames),
+		TotalAmount: p.TotalAmount,
+		Creator: PurchaseCreatorResponse{
+			ID:   p.CreatedBy,
+			Name: p.Creator.Name,
+		},
+		CreatedAt: p.CreatedAt,
 	}
 }
