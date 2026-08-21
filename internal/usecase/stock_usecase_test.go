@@ -33,10 +33,11 @@ func TestStockUsecase_Opname(t *testing.T) {
 	stockMutationRepo := repository.NewStockMutationRepository(db)
 	stockCountRepo := repository.NewStockCountRepository(db)
 	purchaseBatchRepo := repository.NewPurchaseBatchRepository(db)
+	purchaseRepo := repository.NewPurchaseRepository(db)
 
 	permissionUsecase := usecase.NewPermissionUsecase(db, repository.NewPermissionRepository(db), userRepo)
 	stockUsecase := usecase.NewStockUsecase(db, stockRepo, stockMutationRepo, stockCountRepo, productRepo, permissionUsecase)
-	purchaseUsecase := usecase.NewPurchaseUsecase(db, purchaseBatchRepo, productRepo, supplierRepo, stockRepo, stockMutationRepo)
+	purchaseUsecase := usecase.NewPurchaseUsecase(db, purchaseRepo, purchaseBatchRepo, productRepo, supplierRepo, stockRepo, stockMutationRepo)
 
 	// Seeding roles, users, and permissions
 	roleAdminID := uuid.New().String()
@@ -151,8 +152,8 @@ func TestStockUsecase_Opname(t *testing.T) {
 			t.Fatalf("failed to record purchase: %v", err)
 		}
 
-		if len(res) != 1 {
-			t.Fatalf("expected 1 batch, got: %d", len(res))
+		if len(res.Items) != 1 {
+			t.Fatalf("expected 1 batch, got: %d", len(res.Items))
 		}
 
 		// Check stock cache
