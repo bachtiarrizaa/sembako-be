@@ -23,11 +23,5 @@ func registerProductRoutes(
 		product.PUT("/:id", middleware.RequirePermission(permissionUsecase, "products:update"), controller.UpdateProduct)
 		product.PATCH("/:id/status", middleware.RequirePermission(permissionUsecase, "products:update"), controller.UpdateProductStatus)
 		product.DELETE("/:id", middleware.RequirePermission(permissionUsecase, "products:delete"), controller.DeleteProduct)
-
-		// Unit management
-		product.POST("/:id/units", middleware.RequirePermission(permissionUsecase, "products:update"), controller.AddProductUnit)
-		product.PUT("/:id/units/:unitId", middleware.RequirePermission(permissionUsecase, "products:update"), controller.UpdateProductUnit)
-		product.PATCH("/:id/units/:unitId/status", middleware.RequirePermission(permissionUsecase, "products:update"), controller.UpdateProductUnitStatus)
-		product.DELETE("/:id/units/:unitId", middleware.RequirePermission(permissionUsecase, "products:delete"), controller.DeleteProductUnit)
 	}
 }
