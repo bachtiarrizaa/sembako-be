@@ -54,7 +54,9 @@ func SeedPermissions(db *gorm.DB) error {
 		// Transactions (from Level 1 directly)
 		{Name: "transactions:void", Description: "Melakukan void transaksi", ParentID: ptrString("30000000-0000-0000-0000-000000000000"), Type: "action"},
 		// Shifts (from Level 1 directly)
-		{Name: "shifts:close", Description: "Menutup shift secara paksa", ParentID: ptrString("40000000-0000-0000-0000-000000000000"), Type: "action"},
+		{Name: "shifts:create", Description: "Membuka shift kasir", ParentID: ptrString("40000000-0000-0000-0000-000000000000"), Type: "action"},
+		{Name: "shifts:close", Description: "Menutup shift sendiri", ParentID: ptrString("40000000-0000-0000-0000-000000000000"), Type: "action"},
+		{Name: "shifts:force-close", Description: "Menutup shift kasir lain secara paksa", ParentID: ptrString("40000000-0000-0000-0000-000000000000"), Type: "action"},
 		// Settings (from Level 1 directly)
 		{Name: "settings:update", Description: "Mengubah pengaturan global", ParentID: ptrString("c0000000-0000-0000-0000-000000000000"), Type: "action"},
 
@@ -155,7 +157,7 @@ func SeedPermissions(db *gorm.DB) error {
 		"dashboard",
 		"pos:create",
 		"transactions:read",
-		"shifts:read",
+		"shifts:read", "shifts:create", "shifts:close",
 		"products", "products:read",
 		"discounts", "discounts:read",
 		"inventory", "stocks:read", "opname:create", "opname:read",

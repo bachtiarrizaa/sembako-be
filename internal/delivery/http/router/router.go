@@ -25,6 +25,7 @@ func Setup(
 	permissionUsecase *usecase.PermissionUsecase,
 	purchaseController *controller.PurchaseController,
 	stockController *controller.StockController,
+	shiftController *controller.ShiftController,
 ) {
 	api := router.Group("/api")
 
@@ -51,4 +52,6 @@ func Setup(
 	registerPurchaseRoutes(api, purchaseController, permissionUsecase, jwtSecret, blacklistRepo)
 
 	registerStockRoutes(api, stockController, permissionUsecase, jwtSecret, blacklistRepo)
+
+	registerShiftRoutes(api, shiftController, permissionUsecase, jwtSecret, blacklistRepo)
 }

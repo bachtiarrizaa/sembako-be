@@ -106,6 +106,10 @@ func InitializeApp(cfg *config.Config) (*gin.Engine, error) {
 	stockUsecase := usecase.NewStockUsecase(db, stockRepo, stockMutationRepo, stockCountRepo, productRepo, permissionUsecase)
 	stockController := controller.NewStockController(stockUsecase)
 
+	shiftRepo := repository.NewShiftRepository(db)
+	shiftUsecase := usecase.NewShiftUsecase(shiftRepo)
+	shiftController := controller.NewShiftController(shiftUsecase)
+
 	app := gin.Default()
 	app.Static("/uploads", cfg.UploadDir)
 	app.Use(cors.New(cors.Config{
@@ -132,6 +136,7 @@ func InitializeApp(cfg *config.Config) (*gin.Engine, error) {
 		permissionUsecase,
 		purchaseController,
 		stockController,
+		shiftController,
 	)
 
 	return app, nil
