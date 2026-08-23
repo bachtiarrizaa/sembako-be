@@ -35,7 +35,8 @@ func TestShiftUsecase_Workflow(t *testing.T) {
 	defer db.Rollback()
 
 	shiftRepo := repository.NewShiftRepository(db)
-	shiftUsecase := usecase.NewShiftUsecase(shiftRepo)
+	transactionRepo := repository.NewTransactionRepository(db)
+	shiftUsecase := usecase.NewShiftUsecase(shiftRepo, transactionRepo)
 
 	// Seed roles & users
 	roleAdmin := entity.Role{Name: "admin_" + uuid.New().String()[:8]}

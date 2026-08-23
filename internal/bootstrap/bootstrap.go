@@ -107,7 +107,11 @@ func InitializeApp(cfg *config.Config) (*gin.Engine, error) {
 	stockController := controller.NewStockController(stockUsecase)
 
 	shiftRepo := repository.NewShiftRepository(db)
-	shiftUsecase := usecase.NewShiftUsecase(shiftRepo)
+	transactionRepo := repository.NewTransactionRepository(db)
+	transactionUsecase := usecase.NewTransactionUsecase(db, transactionRepo, shiftRepo, customerRepo, productUnitRepo, productRepo, stockRepo, stockMutationRepo)
+	transactionController := controller.NewTransactionController(transactionUsecase)
+
+	shiftUsecase := usecase.NewShiftUsecase(shiftRepo, transactionRepo)
 	shiftController := controller.NewShiftController(shiftUsecase)
 
 	app := gin.Default()
@@ -137,6 +141,7 @@ func InitializeApp(cfg *config.Config) (*gin.Engine, error) {
 		purchaseController,
 		stockController,
 		shiftController,
+		transactionController,
 	)
 
 	return app, nil
