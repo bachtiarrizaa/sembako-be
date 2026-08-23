@@ -9,6 +9,7 @@ import (
 	"github.com/bachtiarrizaa/sembako-be/internal/usecase"
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
+	"github.com/google/uuid"
 )
 
 type ShiftController struct {
@@ -64,4 +65,37 @@ func (c *ShiftController) GetActiveShift(ctx *gin.Context) {
 	}
 
 	utils.SuccessResponse(ctx, http.StatusOK, "active shift fetched successfully", res)
+}
+
+func (c *ShiftController) CloseShift(ctx *gin.Context) {
+	userID, exists := middleware.GetUserID(ctx)
+	if !exists {
+		utils.ErrorResponse(ctx, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+
+	shiftID, err := uuid.Parse(ctx.Param("id"))
+	if err != nil {
+		utils.ErrorResponse(ctx, http.StatusBadRequest, "invalid shift id")
+		return
+	}
+
+	var req model.CloseShiftRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		utils.ErrorResponse(ctx, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	if err := c.validator.Struct(req); err != nil {
+		utils.ErrorResponse(ctx, http.StatusUnprocessableEntity, utils.FormatValidationError(err))
+		return
+	}
+
+	res, err := c.shiftUsecase.CloseShift(ctx.Request.Context(), shiftID, userID, req)
+	if err != nil {
+		utils.HandleError(ctx, err)
+		return
+	}
+
+	utils.SuccessResponse(ctx, http.StatusOK, "shift closed successfully", res)
 }
