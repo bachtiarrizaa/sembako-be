@@ -21,7 +21,7 @@ func registerShiftRoutes(
 		shift.GET("/active", middleware.RequirePermission(permission, "shifts:read"), controller.GetActiveShift)
 		shift.POST("/:id/close", middleware.RequirePermission(permission, "shifts:close"), controller.CloseShift)
 		shift.POST("/:id/force-close", middleware.RequirePermission(permission, "shifts:force-close"), controller.ForceCloseShift)
-		// shift.GET("", middleware.RequirePermission(permission, "shifts:read"), controller.ListShifts)
-		// shift.GET("/:id", middleware.RequirePermission(permission, "shifts:read"), controller.GetShiftDetail)
+		shift.GET("", middleware.RequirePermission(permission, "shifts:read"), controller.ListShifts)
+		shift.GET("/:id", middleware.RequirePermission(permission, "shifts:read"), controller.GetShiftDetail)
 	}
 }
