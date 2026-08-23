@@ -24,7 +24,7 @@ func NewShiftController(shiftUsecase *usecase.ShiftUsecase) *ShiftController {
 }
 
 func (c *ShiftController) OpenShift(ctx *gin.Context) {
-	userID, exists := middleware.GetUserID((ctx))
+	userID, exists := middleware.GetUserID(ctx)
 	if !exists {
 		utils.ErrorResponse(ctx, http.StatusUnauthorized, "unauthorized")
 		return
@@ -48,5 +48,20 @@ func (c *ShiftController) OpenShift(ctx *gin.Context) {
 	}
 
 	utils.SuccessResponse(ctx, http.StatusCreated, "shift opened successfully", res)
+}
 
+func (c *ShiftController) GetActiveShift(ctx *gin.Context) {
+	userID, exists := middleware.GetUserID(ctx)
+	if !exists {
+		utils.ErrorResponse(ctx, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+
+	res, err := c.shiftUsecase.GetActiveShift(ctx.Request.Context(), userID)
+	if err != nil {
+		utils.HandleError(ctx, err)
+		return
+	}
+
+	utils.SuccessResponse(ctx, http.StatusOK, "active shift fetched successfully", res)
 }

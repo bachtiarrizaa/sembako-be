@@ -52,3 +52,16 @@ func (u *ShiftUsecase) OpenShift(ctx context.Context, cashierID uuid.UUID, req m
 	resp := model.ToShiftResponse(created)
 	return &resp, nil
 }
+
+func (u *ShiftUsecase) GetActiveShift(ctx context.Context, cashierID uuid.UUID) (*model.ShiftResponse, error) {
+	shift, err := u.shiftRepo.FindActiveByCashierID(ctx, cashierID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errs.NewNotFound("no active shift found")
+		}
+		return nil, errs.NewInternal("failed to fetch active shift")
+	}
+
+	resp := model.ToShiftResponse(shift)
+	return &resp, nil
+}
