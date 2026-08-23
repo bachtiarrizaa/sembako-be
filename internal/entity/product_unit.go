@@ -7,6 +7,7 @@ type ProductUnit struct {
 	ProductID        string    `gorm:"column:product_id;type:uuid;not null" json:"productId"`
 	UnitID           string    `gorm:"column:unit_id;type:uuid;not null" json:"unitId"`
 	Unit             Unit      `gorm:"foreignKey:UnitID" json:"unit"`
+	Product          Product   `gorm:"foreignKey:ProductID" json:"product"`
 	ConversionToBase float64   `gorm:"column:conversion_to_base;not null" json:"conversionToBase"`
 	SellingPrice     float64   `gorm:"column:selling_price;not null" json:"sellingPrice"`
 	IsBaseUnit       bool      `gorm:"column:is_base_unit;not null;default:false" json:"isBaseUnit"`
