@@ -10,6 +10,11 @@ type OpenShiftRequest struct {
 	OpeningBalance float64 `json:"openingBalance" validate:"required,gte=0"`
 }
 
+type CloseShiftRequest struct {
+	ClosingBalance  float64 `json:"closingBalance" validate:"required,gte=0"`
+	DiscrepancyNote *string `json:"discrepancyNote" validate:"omitempty,max=500"`
+}
+
 type ShiftCashierResponse struct {
 	ID    string `json:"id"`
 	Name  string `json:"name"`

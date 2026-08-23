@@ -12,6 +12,7 @@ type ShiftRepository interface {
 	Create(ctx context.Context, shift *entity.Shift) error
 	FindActiveByCashierID(ctx context.Context, cashierID uuid.UUID) (*entity.Shift, error)
 	FindByID(ctx context.Context, id uuid.UUID) (*entity.Shift, error)
+	Update(ctx context.Context, shift *entity.Shift) error
 	WithTx(tx *gorm.DB) ShiftRepository
 }
 
@@ -52,4 +53,8 @@ func (r *shiftRepositoryImpl) FindByID(ctx context.Context, id uuid.UUID) (*enti
 		return nil, err
 	}
 	return &shift, nil
+}
+
+func (r *shiftRepositoryImpl) Update(ctx context.Context, shift *entity.Shift) error {
+	return r.db.WithContext(ctx).Save(shift).Error
 }
