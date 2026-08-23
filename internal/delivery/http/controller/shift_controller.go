@@ -132,3 +132,66 @@ func (c *ShiftController) ForceCloseShift(ctx *gin.Context) {
 
 	utils.SuccessResponse(ctx, http.StatusOK, "shift force closed successfully", res)
 }
+
+func (c *ShiftController) ListShifts(ctx *gin.Context) {
+	userID, exists := middleware.GetUserID(ctx)
+	if !exists {
+		utils.ErrorResponse(ctx, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+
+	role, exists := middleware.GetRole(ctx)
+	if !exists {
+		utils.ErrorResponse(ctx, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+
+	var req model.ListShiftsRequest
+	if err := ctx.ShouldBindQuery(&req); err != nil {
+		utils.ErrorResponse(ctx, http.StatusBadRequest, "invalid query params")
+		return
+	}
+
+	if req.Page <= 0 {
+		req.Page = 1
+	}
+	if req.Limit <= 0 {
+		req.Limit = 10
+	}
+
+	res, pagination, err := c.shiftUsecase.ListShifts(ctx.Request.Context(), req, userID, role)
+	if err != nil {
+		utils.HandleError(ctx, err)
+		return
+	}
+
+	utils.SuccessResponseWithPagination(ctx, http.StatusOK, "shifts fetched successfully", res, pagination)
+}
+
+func (c *ShiftController) GetShiftDetail(ctx *gin.Context) {
+	userID, exists := middleware.GetUserID(ctx)
+	if !exists {
+		utils.ErrorResponse(ctx, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+
+	role, exists := middleware.GetRole(ctx)
+	if !exists {
+		utils.ErrorResponse(ctx, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+
+	shiftID, err := uuid.Parse(ctx.Param("id"))
+	if err != nil {
+		utils.ErrorResponse(ctx, http.StatusBadRequest, "invalid shift id")
+		return
+	}
+
+	res, err := c.shiftUsecase.GetShiftDetail(ctx.Request.Context(), shiftID, userID, role)
+	if err != nil {
+		utils.HandleError(ctx, err)
+		return
+	}
+
+	utils.SuccessResponse(ctx, http.StatusOK, "shift detail fetched successfully", res)
+}

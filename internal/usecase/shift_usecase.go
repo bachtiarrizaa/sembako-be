@@ -4,11 +4,13 @@ import (
 	"context"
 	"errors"
 	"math"
+	"strings"
 	"time"
 
 	"github.com/bachtiarrizaa/sembako-be/internal/entity"
 	"github.com/bachtiarrizaa/sembako-be/internal/model"
 	"github.com/bachtiarrizaa/sembako-be/internal/pkg/errs"
+	"github.com/bachtiarrizaa/sembako-be/internal/pkg/utils"
 	"github.com/bachtiarrizaa/sembako-be/internal/repository"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -179,5 +181,43 @@ func (u *ShiftUsecase) ForceCloseShift(ctx context.Context, shiftID uuid.UUID, a
 	}
 
 	resp := model.ToShiftResponse(updated)
+	return &resp, nil
+}
+
+func (u *ShiftUsecase) ListShifts(ctx context.Context, req model.ListShiftsRequest, userID uuid.UUID, role string) ([]model.ShiftListItemResponse, utils.Pagination, error) {
+	var restrictToCashierID *uuid.UUID
+	if strings.ToLower(role) == "cashier" {
+		restrictToCashierID = &userID
+	}
+
+	shifts, total, err := u.shiftRepo.FindShifts(ctx, req, restrictToCashierID)
+	if err != nil {
+		return nil, utils.Pagination{}, errs.NewInternal("failed to fetch shifts")
+	}
+
+	res := make([]model.ShiftListItemResponse, 0, len(shifts))
+	for _, s := range shifts {
+		res = append(res, model.ToShiftListItemResponse(&s))
+	}
+
+	pagination := utils.BuildPagination(req.Page, req.Limit, total)
+
+	return res, pagination, nil
+}
+
+func (u *ShiftUsecase) GetShiftDetail(ctx context.Context, shiftID uuid.UUID, userID uuid.UUID, role string) (*model.ShiftResponse, error) {
+	shift, err := u.shiftRepo.FindByID(ctx, shiftID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errs.NewNotFound("shift not found")
+		}
+		return nil, errs.NewInternal("failed to fetch shift detail")
+	}
+
+	if strings.ToLower(role) == "cashier" && shift.CashierID != userID.String() {
+		return nil, errs.NewForbidden("you can only view your own shift detail")
+	}
+
+	resp := model.ToShiftResponse(shift)
 	return &resp, nil
 }
