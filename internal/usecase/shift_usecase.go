@@ -17,11 +17,15 @@ import (
 )
 
 type ShiftUsecase struct {
-	shiftRepo repository.ShiftRepository
+	shiftRepo       repository.ShiftRepository
+	transactionRepo repository.TransactionRepository
 }
 
-func NewShiftUsecase(shiftRepo repository.ShiftRepository) *ShiftUsecase {
-	return &ShiftUsecase{shiftRepo: shiftRepo}
+func NewShiftUsecase(shiftRepo repository.ShiftRepository, transactionRepo repository.TransactionRepository) *ShiftUsecase {
+	return &ShiftUsecase{
+		shiftRepo:       shiftRepo,
+		transactionRepo: transactionRepo,
+	}
 }
 
 func (u *ShiftUsecase) OpenShift(ctx context.Context, cashierID uuid.UUID, req model.OpenShiftRequest) (*model.ShiftResponse, error) {
@@ -122,11 +126,8 @@ func (u *ShiftUsecase) CloseShift(ctx context.Context, shiftID uuid.UUID, cashie
 	return &resp, nil
 }
 
-// TODO(transaction-module): replace this with real query once
-// the Transaksi module is implemented — sum of "cash" payment
-// transactions where shift_id = shiftID.
 func (u *ShiftUsecase) getTotalCashSales(ctx context.Context, shiftID uuid.UUID) (float64, error) {
-	return 0, nil
+	return u.transactionRepo.GetTotalCashSalesByShift(ctx, shiftID.String())
 }
 
 func (u *ShiftUsecase) ForceCloseShift(ctx context.Context, shiftID uuid.UUID, adminID uuid.UUID, req model.ForceCloseShiftRequest) (*model.ShiftResponse, error) {
