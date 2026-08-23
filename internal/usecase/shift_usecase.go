@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"errors"
+	"math"
 	"time"
 
 	"github.com/bachtiarrizaa/sembako-be/internal/entity"
@@ -95,7 +96,7 @@ func (u *ShiftUsecase) CloseShift(ctx context.Context, shiftID uuid.UUID, cashie
 	discrepancy := req.ClosingBalance - systemBalance
 
 	// SHIFT-07: wajib catatan alasan kalau selisih > Rp 1.000
-	if abs(discrepancy) > discrepancyTolerance && (req.DiscrepancyNote == nil || *req.DiscrepancyNote == "") {
+	if math.Abs(discrepancy) > discrepancyTolerance && (req.DiscrepancyNote == nil || *req.DiscrepancyNote == "") {
 		return nil, errs.NewBadRequest("discrepancy note is required when discrepancy exceeds Rp 1,000")
 	}
 
@@ -107,8 +108,12 @@ func (u *ShiftUsecase) CloseShift(ctx context.Context, shiftID uuid.UUID, cashie
 	shift.Status = entity.ShiftStatusClosed
 	shift.ClosedAt = &now
 
-	if err := u.shiftRepo.Update(ctx, shift); err != nil {
+	rowsAffected, err := u.shiftRepo.Update(ctx, shift)
+	if err != nil {
 		return nil, errs.NewInternal("failed to close shift")
+	}
+	if rowsAffected == 0 {
+		return nil, errs.NewConflict("shift was already closed by another request")
 	}
 
 	resp := model.ToShiftResponse(shift)
@@ -122,9 +127,57 @@ func (u *ShiftUsecase) getTotalCashSales(ctx context.Context, shiftID uuid.UUID)
 	return 0, nil
 }
 
-func abs(f float64) float64 {
-	if f < 0 {
-		return -f
+func (u *ShiftUsecase) ForceCloseShift(ctx context.Context, shiftID uuid.UUID, adminID uuid.UUID, req model.ForceCloseShiftRequest) (*model.ShiftResponse, error) {
+	shift, err := u.shiftRepo.FindByID(ctx, shiftID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errs.NewNotFound("shift not found")
+		}
+		return nil, errs.NewInternal("failed to fetch shift")
 	}
-	return f
+
+	if shift.Status != entity.ShiftStatusOpen {
+		return nil, errs.NewConflict("shift is already closed")
+	}
+
+	totalCashSales, err := u.getTotalCashSales(ctx, shiftID)
+	if err != nil {
+		return nil, errs.NewInternal("failed to calculate cash sales")
+	}
+
+	systemBalance := shift.OpeningBalance + totalCashSales
+	discrepancy := req.ClosingBalance - systemBalance
+
+	// SHIFT-07: wajib catatan alasan kalau selisih > Rp 1.000
+	if math.Abs(discrepancy) > discrepancyTolerance && (req.DiscrepancyNote == nil || *req.DiscrepancyNote == "") {
+		return nil, errs.NewBadRequest("discrepancy note is required when discrepancy exceeds Rp 1,000")
+	}
+
+	adminIDStr := adminID.String()
+	now := time.Now()
+
+	shift.ClosingBalance = &req.ClosingBalance
+	shift.SystemBalance = &systemBalance
+	shift.Discrepancy = &discrepancy
+	shift.DiscrepancyNote = req.DiscrepancyNote
+	shift.ForceCloseReason = &req.Reason
+	shift.ForceClosedBy = &adminIDStr
+	shift.Status = entity.ShiftStatusClosed
+	shift.ClosedAt = &now
+
+	rowsAffected, err := u.shiftRepo.Update(ctx, shift)
+	if err != nil {
+		return nil, errs.NewInternal("failed to close shift")
+	}
+	if rowsAffected == 0 {
+		return nil, errs.NewConflict("shift was already closed by another request")
+	}
+
+	updated, err := u.shiftRepo.FindByID(ctx, shiftID)
+	if err != nil {
+		return nil, errs.NewInternal("failed to load closed shift")
+	}
+
+	resp := model.ToShiftResponse(updated)
+	return &resp, nil
 }

@@ -99,3 +99,36 @@ func (c *ShiftController) CloseShift(ctx *gin.Context) {
 
 	utils.SuccessResponse(ctx, http.StatusOK, "shift closed successfully", res)
 }
+
+func (c *ShiftController) ForceCloseShift(ctx *gin.Context) {
+	adminID, exists := middleware.GetUserID(ctx)
+	if !exists {
+		utils.ErrorResponse(ctx, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+
+	shiftID, err := uuid.Parse(ctx.Param("id"))
+	if err != nil {
+		utils.ErrorResponse(ctx, http.StatusBadRequest, "invalid shift id")
+		return
+	}
+
+	var req model.ForceCloseShiftRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		utils.ErrorResponse(ctx, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	if err := c.validator.Struct(req); err != nil {
+		utils.ErrorResponse(ctx, http.StatusUnprocessableEntity, utils.FormatValidationError(err))
+		return
+	}
+
+	res, err := c.shiftUsecase.ForceCloseShift(ctx.Request.Context(), shiftID, adminID, req)
+	if err != nil {
+		utils.HandleError(ctx, err)
+		return
+	}
+
+	utils.SuccessResponse(ctx, http.StatusOK, "shift force closed successfully", res)
+}

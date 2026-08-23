@@ -12,7 +12,7 @@ type ShiftRepository interface {
 	Create(ctx context.Context, shift *entity.Shift) error
 	FindActiveByCashierID(ctx context.Context, cashierID uuid.UUID) (*entity.Shift, error)
 	FindByID(ctx context.Context, id uuid.UUID) (*entity.Shift, error)
-	Update(ctx context.Context, shift *entity.Shift) error
+	Update(ctx context.Context, shift *entity.Shift) (int64, error) // ← disesuaikan
 	WithTx(tx *gorm.DB) ShiftRepository
 }
 
@@ -48,6 +48,7 @@ func (r *shiftRepositoryImpl) FindByID(ctx context.Context, id uuid.UUID) (*enti
 	var shift entity.Shift
 	err := r.db.WithContext(ctx).
 		Preload("Cashier").
+		Preload("ForceClosedByUser").
 		First(&shift, "id = ?", id).Error
 	if err != nil {
 		return nil, err
@@ -55,6 +56,10 @@ func (r *shiftRepositoryImpl) FindByID(ctx context.Context, id uuid.UUID) (*enti
 	return &shift, nil
 }
 
-func (r *shiftRepositoryImpl) Update(ctx context.Context, shift *entity.Shift) error {
-	return r.db.WithContext(ctx).Save(shift).Error
+func (r *shiftRepositoryImpl) Update(ctx context.Context, shift *entity.Shift) (int64, error) {
+	result := r.db.WithContext(ctx).
+		Model(&entity.Shift{}).
+		Where("id = ? AND status = ?", shift.ID, entity.ShiftStatusOpen).
+		Updates(shift)
+	return result.RowsAffected, result.Error
 }
