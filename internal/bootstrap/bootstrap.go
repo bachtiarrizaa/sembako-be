@@ -91,6 +91,10 @@ func InitializeApp(cfg *config.Config) (*gin.Engine, error) {
 	discountUsecase := usecase.NewDiscountUsecase(discountRepo)
 	discountController := controller.NewDiscountController(discountUsecase)
 
+	productDiscountRepo := repository.NewProductDiscountRepository(db)
+	productDiscountUsecase := usecase.NewProductDiscountUsecase(productDiscountRepo)
+	productDiscountController := controller.NewProductDiscountController(productDiscountUsecase)
+
 	permissionUsecase := usecase.NewPermissionUsecase(db, permissionRepo, userRepo)
 	permissionController := controller.NewPermissionController(permissionUsecase)
 
@@ -148,6 +152,7 @@ func InitializeApp(cfg *config.Config) (*gin.Engine, error) {
 		customerController,
 		productController,
 		discountController,
+		productDiscountController,
 		permissionController,
 		permissionUsecase,
 		purchaseController,

@@ -21,6 +21,7 @@ func Setup(
 	customerController *controller.CustomerController,
 	productController *controller.ProductController,
 	discountController *controller.DiscountController,
+	productDiscountController *controller.ProductDiscountController,
 	permissionController *controller.PermissionController,
 	permissionUsecase *usecase.PermissionUsecase,
 	purchaseController *controller.PurchaseController,
@@ -57,4 +58,6 @@ func Setup(
 	registerShiftRoutes(api, shiftController, permissionUsecase, jwtSecret, blacklistRepo)
 
 	registerTransactionRoutes(api, transactionController, permissionUsecase, jwtSecret, blacklistRepo)
+
+	registerProductDiscountRoutes(api, productDiscountController, permissionUsecase, jwtSecret, blacklistRepo)
 }

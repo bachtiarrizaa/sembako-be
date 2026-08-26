@@ -25,5 +25,10 @@ migrate-fresh:
 	migrate -path migrations -database "$(MIGRATE_DSN)" down -all
 	migrate -path migrations -database "$(MIGRATE_DSN)" up
 
+# Example: make migrate-create name=create_product_discounts_table
 migrate-create:
 	migrate create -ext sql -dir migrations -seq $(name)
+
+# Example: make migrate-force version=29
+migrate-force:
+	migrate -path migrations -database "$(MIGRATE_DSN)" force $(version)
