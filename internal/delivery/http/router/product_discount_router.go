@@ -18,5 +18,7 @@ func registerProductDiscountRoutes(
 	productDiscount := router.Group("/product-discounts", middleware.AuthMiddleware(jwtSecret, blacklistRepo))
 	{
 		productDiscount.POST("", middleware.RequirePermission(permissionUsecase, "discounts:create"), controller.Create)
+		productDiscount.GET("", middleware.RequirePermission(permissionUsecase, "discounts:read"), controller.GetProductDiscounts)
+		productDiscount.GET("/:id", middleware.RequirePermission(permissionUsecase, "discounts:read"), controller.GetProductDiscountByID)
 	}
 }

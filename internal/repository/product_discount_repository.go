@@ -4,6 +4,8 @@ import (
 	"context"
 
 	"github.com/bachtiarrizaa/sembako-be/internal/entity"
+	"github.com/bachtiarrizaa/sembako-be/internal/model"
+	"github.com/bachtiarrizaa/sembako-be/internal/pkg/utils"
 	"gorm.io/gorm"
 )
 
@@ -11,6 +13,7 @@ type ProductDiscountRepository interface {
 	Create(ctx context.Context, productDiscount *entity.ProductDiscount) error
 	FindByID(ctx context.Context, id string) (*entity.ProductDiscount, error)
 	FindByDiscountAndProduct(ctx context.Context, discountID string, productID string) (*entity.ProductDiscount, error)
+	FindProductDiscounts(ctx context.Context, req model.GetProductDiscountsRequest) ([]entity.ProductDiscount, int64, error)
 	WithTx(tx *gorm.DB) ProductDiscountRepository
 }
 
@@ -50,4 +53,39 @@ func (r *productDiscountRepositoryImpl) FindByID(ctx context.Context, id string)
 		return nil, err
 	}
 	return &productDiscount, nil
+}
+
+func (r *productDiscountRepositoryImpl) FindProductDiscounts(ctx context.Context, req model.GetProductDiscountsRequest) ([]entity.ProductDiscount, int64, error) {
+	var productDiscounts []entity.ProductDiscount
+	var total int64
+
+	query := r.db.WithContext(ctx).
+		Model(&entity.ProductDiscount{}).
+		Preload("Product.Category").
+		Preload("Product").
+		Preload("Discount")
+
+	if req.DiscountID != "" {
+		query = query.Where("discount_id = ?", req.DiscountID)
+	}
+
+	if req.ProductID != "" {
+		query = query.Where("product_id = ?", req.ProductID)
+	}
+
+	if req.IsActive != nil {
+		query = query.Where("is_active = ?", *req.IsActive)
+	}
+
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	offset, limit := utils.CalculateOffset(req.Page, req.Limit)
+	if err := query.Order("created_at DESC").Offset(offset).Limit(limit).Find(&productDiscounts).
+		Error; err != nil {
+		return nil, 0, err
+	}
+
+	return productDiscounts, total, nil
 }

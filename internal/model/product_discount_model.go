@@ -20,19 +20,32 @@ type UpdateProductDiscountStatusRequest struct {
 	IsActive *bool `json:"isActive" validate:"required"`
 }
 
+type GetProductDiscountsRequest struct {
+	PaginationRequest
+	DiscountID string `form:"discountId"`
+	ProductID  string `form:"productId"`
+	IsActive   *bool  `form:"isActive"`
+}
+
+type ProductInDiscountResponse struct {
+	ID       string                    `json:"id"`
+	Name     string                    `json:"name"`
+	Category CategoryInProductResponse `json:"category"`
+}
+
 type ProductDiscountResponse struct {
-	ID        string           `json:"id"`
-	Product   ProductResponse  `json:"product"`
-	Discount  DiscountResponse `json:"discount"`
-	IsActive  bool             `json:"isActive"`
-	CreatedAt time.Time        `json:"createdAt"`
-	UpdatedAt time.Time        `json:"updatedAt"`
+	ID        string                    `json:"id"`
+	Product   ProductInDiscountResponse `json:"product"`
+	Discount  DiscountResponse          `json:"discount"`
+	IsActive  bool                      `json:"isActive"`
+	CreatedAt time.Time                 `json:"createdAt"`
+	UpdatedAt time.Time                 `json:"updatedAt"`
 }
 
 func ToProductDiscountResponse(d *entity.ProductDiscount) ProductDiscountResponse {
 	return ProductDiscountResponse{
 		ID: d.ID,
-		Product: ProductResponse{
+		Product: ProductInDiscountResponse{
 			ID:   d.ProductID,
 			Name: d.Product.Name,
 			Category: CategoryInProductResponse{
