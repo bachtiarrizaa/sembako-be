@@ -16,6 +16,7 @@ type PurchaseBatchRepository interface {
 	Update(ctx context.Context, batch *entity.PurchaseBatch) error
 	Delete(ctx context.Context, id string) error
 	HasPurchaseReferences(ctx context.Context, productID string) (bool, error)
+	FindActiveBatchesByProductID(ctx context.Context, productID string) ([]entity.PurchaseBatch, error)
 	WithTx(tx *gorm.DB) PurchaseBatchRepository
 }
 
@@ -136,4 +137,16 @@ func (r *purchaseBatchRepositoryImpl) HasPurchaseReferences(ctx context.Context,
 		return false, err
 	}
 	return count > 0, nil
+}
+
+func (r *purchaseBatchRepositoryImpl) FindActiveBatchesByProductID(ctx context.Context, productID string) ([]entity.PurchaseBatch, error) {
+	var batches []entity.PurchaseBatch
+	err := r.db.WithContext(ctx).
+		Where("product_id = ? AND remaining_qty > 0", productID).
+		Order("purchase_date ASC, created_at ASC").
+		Find(&batches).Error
+	if err != nil {
+		return nil, err
+	}
+	return batches, nil
 }
