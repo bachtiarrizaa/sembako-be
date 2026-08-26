@@ -7,6 +7,7 @@ import (
 	"github.com/bachtiarrizaa/sembako-be/internal/entity"
 	"github.com/bachtiarrizaa/sembako-be/internal/model"
 	"github.com/bachtiarrizaa/sembako-be/internal/pkg/errs"
+	"github.com/bachtiarrizaa/sembako-be/internal/pkg/utils"
 	"github.com/bachtiarrizaa/sembako-be/internal/repository"
 	"gorm.io/gorm"
 )
@@ -46,3 +47,32 @@ func (u *ProductDiscountUsecase) Create(ctx context.Context, req model.CreatePro
 	resp := model.ToProductDiscountResponse(created)
 	return &resp, nil
 }
+
+func (u *ProductDiscountUsecase) GetProductDiscounts(ctx context.Context, req model.GetProductDiscountsRequest) ([]model.ProductDiscountResponse, utils.Pagination, error) {
+	productDiscounts, total, err := u.productDiscountRepo.FindProductDiscounts(ctx, req)
+	if err != nil {
+		return nil, utils.Pagination{}, errs.NewInternal("failed to fetch product discounts")
+	}
+
+	res := []model.ProductDiscountResponse{}
+	for _, pd := range productDiscounts {
+		res = append(res, model.ToProductDiscountResponse(&pd))
+	}
+
+	pagination := utils.BuildPagination(req.Page, req.Limit, total)
+	return res, pagination, nil
+}
+
+func (u *ProductDiscountUsecase) GetProductDiscountByID(ctx context.Context, id string) (*model.ProductDiscountResponse, error) {
+	productDiscount, err := u.productDiscountRepo.FindByID(ctx, id)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errs.NewNotFound("product discount not found")
+		}
+		return nil, errs.NewInternal("failed to fetch product discount: " + err.Error())
+	}
+
+	resp := model.ToProductDiscountResponse(productDiscount)
+	return &resp, nil
+}
+

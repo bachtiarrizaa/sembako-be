@@ -106,6 +106,33 @@ func TestProductDiscount_Usecase(t *testing.T) {
 	if errConflict == nil {
 		t.Fatalf("expected conflict error on duplicate create, got nil")
 	}
+
+	// Skenario 3: Get Product Discounts With Pagination
+	listReq := model.GetProductDiscountsRequest{
+		DiscountID: discount.ID,
+	}
+	discountsList, pagination, err := productDiscountUsecase.GetProductDiscounts(ctx, listReq)
+	if err != nil {
+		t.Fatalf("expected get product discounts to succeed, got: %v", err)
+	}
+	if len(discountsList) != 1 || pagination.TotalData != 1 {
+		t.Errorf("expected 1 product discount, got %d (total: %d)", len(discountsList), pagination.TotalData)
+	}
+
+	// Skenario 4: Get Product Discount By ID Berhasil
+	detail, err := productDiscountUsecase.GetProductDiscountByID(ctx, res.ID)
+	if err != nil {
+		t.Fatalf("expected get by ID to succeed, got: %v", err)
+	}
+	if detail.ID != res.ID || detail.Product.ID != product.ID {
+		t.Errorf("unexpected detail response: %+v", detail)
+	}
+
+	// Skenario 5: Get Product Discount By ID Not Found
+	_, errNotFound := productDiscountUsecase.GetProductDiscountByID(ctx, uuid.New().String())
+	if errNotFound == nil {
+		t.Fatalf("expected not found error for non-existent ID, got nil")
+	}
 }
 
 // 2. INTEGRATION TEST: HTTP Controller & Routing Layer
@@ -134,7 +161,19 @@ func TestProductDiscount_API(t *testing.T) {
 		}
 	}
 
-	if err := db.Exec("INSERT INTO role_permissions (role_id, permission_id) VALUES (?, ?) ON CONFLICT DO NOTHING", role.ID, permission.ID).Error; err != nil {
+	var readPermission entity.Permission
+	if err := db.Where("name = ?", "discounts:read").First(&readPermission).Error; err != nil {
+		readPermission = entity.Permission{
+			Name:        "discounts:read",
+			Description: "Read product discount",
+			Type:        "action",
+		}
+		if err := db.Create(&readPermission).Error; err != nil {
+			t.Fatalf("failed to seed read permission: %v", err)
+		}
+	}
+
+	if err := db.Exec("INSERT INTO role_permissions (role_id, permission_id) VALUES (?, ?), (?, ?) ON CONFLICT DO NOTHING", role.ID, permission.ID, role.ID, readPermission.ID).Error; err != nil {
 		t.Fatalf("failed to link role permission: %v", err)
 	}
 
@@ -207,6 +246,11 @@ func TestProductDiscount_API(t *testing.T) {
 		t.Fatalf("expected HTTP 201, got %d, body: %s", w.Code, w.Body.String())
 	}
 
+	var createdRes struct {
+		Data model.ProductDiscountResponse `json:"data"`
+	}
+	_ = json.Unmarshal(w.Body.Bytes(), &createdRes)
+
 	// Test Case 2: Duplicate Product Discount (409 Conflict)
 	wDuplicate := httptest.NewRecorder()
 	reqDuplicate, _ := http.NewRequest(http.MethodPost, "/api/product-discounts", bytes.NewBuffer(bodyReq))
@@ -238,5 +282,35 @@ func TestProductDiscount_API(t *testing.T) {
 
 	if wUnauthorized.Code != http.StatusUnauthorized {
 		t.Fatalf("expected HTTP 401, got %d, body: %s", wUnauthorized.Code, wUnauthorized.Body.String())
+	}
+
+	// Test Case 5: GET /api/product-discounts (200 OK)
+	wGetList := httptest.NewRecorder()
+	reqGetList, _ := http.NewRequest(http.MethodGet, "/api/product-discounts?discountId="+discount.ID, nil)
+	reqGetList.Header.Set("Authorization", "Bearer "+token)
+	app.ServeHTTP(wGetList, reqGetList)
+
+	if wGetList.Code != http.StatusOK {
+		t.Fatalf("expected HTTP 200, got %d, body: %s", wGetList.Code, wGetList.Body.String())
+	}
+
+	// Test Case 6: GET /api/product-discounts/:id (200 OK)
+	wGetDetail := httptest.NewRecorder()
+	reqGetDetail, _ := http.NewRequest(http.MethodGet, "/api/product-discounts/"+createdRes.Data.ID, nil)
+	reqGetDetail.Header.Set("Authorization", "Bearer "+token)
+	app.ServeHTTP(wGetDetail, reqGetDetail)
+
+	if wGetDetail.Code != http.StatusOK {
+		t.Fatalf("expected HTTP 200, got %d, body: %s", wGetDetail.Code, wGetDetail.Body.String())
+	}
+
+	// Test Case 7: GET /api/product-discounts/:id Not Found (404 Not Found)
+	wGetNotFound := httptest.NewRecorder()
+	reqGetNotFound, _ := http.NewRequest(http.MethodGet, "/api/product-discounts/"+uuid.New().String(), nil)
+	reqGetNotFound.Header.Set("Authorization", "Bearer "+token)
+	app.ServeHTTP(wGetNotFound, reqGetNotFound)
+
+	if wGetNotFound.Code != http.StatusNotFound {
+		t.Fatalf("expected HTTP 404, got %d, body: %s", wGetNotFound.Code, wGetNotFound.Body.String())
 	}
 }
