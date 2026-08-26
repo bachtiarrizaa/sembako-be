@@ -108,7 +108,19 @@ func InitializeApp(cfg *config.Config) (*gin.Engine, error) {
 
 	shiftRepo := repository.NewShiftRepository(db)
 	transactionRepo := repository.NewTransactionRepository(db)
-	transactionUsecase := usecase.NewTransactionUsecase(db, transactionRepo, shiftRepo, customerRepo, productUnitRepo, productRepo, stockRepo, stockMutationRepo)
+	costAllocationRepo := repository.NewTransactionItemCostAllocationRepository(db)
+	transactionUsecase := usecase.NewTransactionUsecase(
+		db,
+		transactionRepo,
+		shiftRepo,
+		customerRepo,
+		productUnitRepo,
+		productRepo,
+		stockRepo,
+		stockMutationRepo,
+		purchaseBatchRepo,
+		costAllocationRepo,
+	)
 	transactionController := controller.NewTransactionController(transactionUsecase)
 
 	shiftUsecase := usecase.NewShiftUsecase(shiftRepo, transactionRepo)

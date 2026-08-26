@@ -23,14 +23,16 @@ type TransactionUsecase interface {
 }
 
 type transactionUsecaseImpl struct {
-	db                *gorm.DB
-	transactionRepo   repository.TransactionRepository
-	shiftRepo         repository.ShiftRepository
-	customerRepo      repository.CustomerRepository
-	productUnitRepo   repository.ProductUnitRepository
-	productRepo       repository.ProductRepository
-	stockRepo         repository.StockRepository
-	stockMutationRepo repository.StockMutationRepository
+	db                 *gorm.DB
+	transactionRepo    repository.TransactionRepository
+	shiftRepo          repository.ShiftRepository
+	customerRepo       repository.CustomerRepository
+	productUnitRepo    repository.ProductUnitRepository
+	productRepo        repository.ProductRepository
+	stockRepo          repository.StockRepository
+	stockMutationRepo  repository.StockMutationRepository
+	purchaseBatchRepo  repository.PurchaseBatchRepository
+	costAllocationRepo repository.TransactionItemCostAllocationRepository
 }
 
 func NewTransactionUsecase(
@@ -42,16 +44,20 @@ func NewTransactionUsecase(
 	productRepo repository.ProductRepository,
 	stockRepo repository.StockRepository,
 	stockMutationRepo repository.StockMutationRepository,
+	purchaseBatchRepo repository.PurchaseBatchRepository,
+	costAllocationRepo repository.TransactionItemCostAllocationRepository,
 ) TransactionUsecase {
 	return &transactionUsecaseImpl{
-		db:                db,
-		transactionRepo:   transactionRepo,
-		shiftRepo:         shiftRepo,
-		customerRepo:      customerRepo,
-		productUnitRepo:   productUnitRepo,
-		productRepo:       productRepo,
-		stockRepo:         stockRepo,
-		stockMutationRepo: stockMutationRepo,
+		db:                 db,
+		transactionRepo:    transactionRepo,
+		shiftRepo:          shiftRepo,
+		customerRepo:       customerRepo,
+		productUnitRepo:    productUnitRepo,
+		productRepo:        productRepo,
+		stockRepo:          stockRepo,
+		stockMutationRepo:  stockMutationRepo,
+		purchaseBatchRepo:  purchaseBatchRepo,
+		costAllocationRepo: costAllocationRepo,
 	}
 }
 
@@ -172,6 +178,8 @@ func (u *transactionUsecaseImpl) CreateTransaction(ctx context.Context, cashierI
 		transactionRepoTx := u.transactionRepo.WithTx(tx)
 		stockRepoTx := u.stockRepo.WithTx(tx)
 		stockMutationRepoTx := u.stockMutationRepo.WithTx(tx)
+		purchaseBatchRepoTx := u.purchaseBatchRepo.WithTx(tx)
+		costAllocationRepoTx := u.costAllocationRepo.WithTx(tx)
 
 		// Create Transaction Header
 		trx := &entity.Transaction{
@@ -212,7 +220,61 @@ func (u *transactionUsecaseImpl) CreateTransaction(ctx context.Context, cashierI
 				return errs.NewConflict("insufficient stock for product: " + pi.product.Name)
 			}
 
-			// Create Detail Item
+			// FIFO Costing Engine:
+			// Fetch active batches for this product sorted by purchase_date ASC, created_at ASC (FIFO)
+			batches, err := purchaseBatchRepoTx.FindActiveBatchesByProductID(ctx, pi.product.ID)
+			if err != nil {
+				return errs.NewInternal("failed to fetch active purchase batches: " + err.Error())
+			}
+
+			var remainingQtyToAllocate = pi.qtyInBase
+			var totalCostForItem float64 = 0
+			type allocationItem struct {
+				batchID            string
+				qtyAllocated       float64
+				purchasePrice      float64
+				costSubtotal       float64
+				updatedBatchRecord *entity.PurchaseBatch
+			}
+			var allocations []allocationItem
+
+			for i := range batches {
+				if remainingQtyToAllocate <= 0 {
+					break
+				}
+				batch := &batches[i]
+				
+				// Determine how much we can allocate from this batch
+				var qtyAllocated float64
+				if batch.RemainingQty >= remainingQtyToAllocate {
+					qtyAllocated = remainingQtyToAllocate
+					batch.RemainingQty = batch.RemainingQty - remainingQtyToAllocate
+					remainingQtyToAllocate = 0
+				} else {
+					qtyAllocated = batch.RemainingQty
+					remainingQtyToAllocate = remainingQtyToAllocate - batch.RemainingQty
+					batch.RemainingQty = 0
+				}
+
+				costSubtotal := qtyAllocated * batch.PurchasePrice
+				totalCostForItem += costSubtotal
+
+				allocations = append(allocations, allocationItem{
+					batchID:            batch.ID,
+					qtyAllocated:       qtyAllocated,
+					purchasePrice:      batch.PurchasePrice,
+					costSubtotal:       costSubtotal,
+					updatedBatchRecord: batch,
+				})
+			}
+
+			// If we still have remaining quantity to allocate, it means the granular batch stocks are out of sync/insufficient compared to the global stock.
+			if remainingQtyToAllocate > 0 {
+				return errs.NewConflict("insufficient purchase batch stock for product: " + pi.product.Name)
+			}
+
+			// Create Detail Item (TransactionItem) with computed HPP/Cost & Margin
+			margin := pi.subtotal - totalCostForItem
 			detail := entity.TransactionItem{
 				TransactionID:   trx.ID,
 				ProductUnitID:   pi.productUnit.ID,
@@ -220,10 +282,33 @@ func (u *transactionUsecaseImpl) CreateTransaction(ctx context.Context, cashierI
 				UnitPrice:       pi.unitPrice,
 				DiscountApplied: 0, // Fase 1 default 0
 				Subtotal:        pi.subtotal,
+				TotalCost:       &totalCostForItem,
+				Margin:          &margin,
 			}
 
 			if err := tx.Create(&detail).Error; err != nil {
 				return errs.NewInternal("failed to create transaction detail: " + err.Error())
+			}
+
+			// Save allocations and update batches in DB
+			for _, alloc := range allocations {
+				// Update batch remaining qty
+				if err := purchaseBatchRepoTx.Update(ctx, alloc.updatedBatchRecord); err != nil {
+					return errs.NewInternal("failed to update purchase batch: " + alloc.updatedBatchRecord.ID + " - " + err.Error())
+				}
+
+				// Create TransactionItemCostAllocation
+				costAlloc := &entity.TransactionItemCostAllocation{
+					TransactionItemID:   detail.ID,
+					PurchaseBatchID:     alloc.batchID,
+					QtyAllocated:        alloc.qtyAllocated,
+					PurchasePriceAtSale: alloc.purchasePrice,
+					CostSubtotal:        alloc.costSubtotal,
+				}
+
+				if err := costAllocationRepoTx.Create(ctx, costAlloc); err != nil {
+					return errs.NewInternal("failed to create cost allocation record: " + err.Error())
+				}
 			}
 
 			// Update Stock Cache
@@ -243,7 +328,7 @@ func (u *transactionUsecaseImpl) CreateTransaction(ctx context.Context, cashierI
 				Qty:         pi.qtyInBase,
 				QtyBefore:   qtyBefore,
 				QtyAfter:    qtyAfter,
-				Source:      "sale", // Matches DB check constraint 'sale'
+				Source:      "sale",
 				ReferenceID: &trx.ID,
 				Note:        &noteStr,
 				CreatedBy:   cashierID,
