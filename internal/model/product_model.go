@@ -14,28 +14,12 @@ type GetProductsRequest struct {
 	Include    string `form:"include"`
 }
 
-type CreateProductUnitRequest struct {
-	UnitID           string  `json:"unitId" validate:"required,uuid"`
-	ConversionToBase float64 `json:"conversionToBase" validate:"required,gt=0"`
-	SellingPrice     float64 `json:"sellingPrice" validate:"required,gt=0"`
-	IsBaseUnit       bool    `json:"isBaseUnit"`
-}
-
 type CreateProductRequest struct {
 	CategoryID             string                     `json:"categoryId" form:"categoryId" validate:"required,uuid"`
 	Name                   string                     `json:"name" form:"name" validate:"required,min=2,max=150"`
 	MinimumStock           *float64                   `json:"minimumStock" form:"minimumStock" validate:"omitempty,gte=0"`
 	MarginThresholdPercent *float64                   `json:"marginThresholdPercent" form:"marginThresholdPercent" validate:"omitempty,gte=0,lte=100"`
 	Units                  []CreateProductUnitRequest `json:"units" validate:"required,min=1,dive"`
-}
-
-type UpdateProductUnitRequest struct {
-	ID               *string `json:"id" validate:"omitempty,uuid"`
-	UnitID           string  `json:"unitId" validate:"required,uuid"`
-	ConversionToBase float64 `json:"conversionToBase" validate:"required,gt=0"`
-	SellingPrice     float64 `json:"sellingPrice" validate:"required,gt=0"`
-	IsBaseUnit       bool    `json:"isBaseUnit"`
-	IsActive         bool    `json:"isActive"`
 }
 
 type UpdateProductRequest struct {
@@ -48,28 +32,6 @@ type UpdateProductRequest struct {
 
 type UpdateProductStatusRequest struct {
 	IsActive *bool `json:"isActive" validate:"required"`
-}
-
-type AddProductUnitRequest struct {
-	UnitID           string  `json:"unitId" validate:"required,uuid"`
-	ConversionToBase float64 `json:"conversionToBase" validate:"required,gt=0"`
-	SellingPrice     float64 `json:"sellingPrice" validate:"required,gt=0"`
-}
-
-type UnitInProductResponse struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
-}
-
-type ProductUnitResponse struct {
-	ID               string                `json:"id"`
-	Unit             UnitInProductResponse `json:"unit"`
-	ConversionToBase float64               `json:"conversionToBase"`
-	SellingPrice     float64               `json:"sellingPrice"`
-	DiscountAmount   float64               `json:"discountAmount"`
-	DiscountedPrice  float64               `json:"discountedPrice"`
-	IsBaseUnit       bool                  `json:"isBaseUnit"`
-	IsActive         bool                  `json:"isActive"`
 }
 
 type CategoryInProductResponse struct {
