@@ -14,20 +14,29 @@ import (
 )
 
 type ProductUsecase struct {
-	db              *gorm.DB
-	productRepo     repository.ProductRepository
-	productUnitRepo repository.ProductUnitRepository
+	db                *gorm.DB
+	productRepo       repository.ProductRepository
+	productUnitRepo   repository.ProductUnitRepository
+	transactionRepo   repository.TransactionRepository
+	purchaseBatchRepo repository.PurchaseBatchRepository
+	stockMutationRepo repository.StockMutationRepository
 }
 
 func NewProductUsecase(
 	db *gorm.DB,
 	productRepo repository.ProductRepository,
 	productUnitRepo repository.ProductUnitRepository,
+	transactionRepo repository.TransactionRepository,
+	purchaseBatchRepo repository.PurchaseBatchRepository,
+	stockMutationRepo repository.StockMutationRepository,
 ) *ProductUsecase {
 	return &ProductUsecase{
-		db:              db,
-		productRepo:     productRepo,
-		productUnitRepo: productUnitRepo,
+		db:                db,
+		productRepo:       productRepo,
+		productUnitRepo:   productUnitRepo,
+		transactionRepo:   transactionRepo,
+		purchaseBatchRepo: purchaseBatchRepo,
+		stockMutationRepo: stockMutationRepo,
 	}
 }
 
@@ -271,11 +280,14 @@ func (u *ProductUsecase) UpdateProduct(ctx context.Context, id string, req model
 			}
 		}
 
+		transactionRepoTx := u.transactionRepo.WithTx(tx)
+		purchaseBatchRepoTx := u.purchaseBatchRepo.WithTx(tx)
+
 		// Delete units not in the request
 		for _, eu := range existingUnits {
 			if !retainedUnitIDs[eu.ID] {
 				// Reference check before deletion
-				hasTransRef, err := productUnitRepoTx.HasTransactionReferences(ctx, eu.ID)
+				hasTransRef, err := transactionRepoTx.HasUnitReferences(ctx, eu.ID)
 				if err != nil {
 					return err
 				}
@@ -283,7 +295,7 @@ func (u *ProductUsecase) UpdateProduct(ctx context.Context, id string, req model
 					return errs.NewConflict("satuan " + eu.Unit.Name + " tidak dapat dihapus karena sudah memiliki riwayat transaksi, silakan nonaktifkan saja")
 				}
 
-				hasPurchRef, err := productUnitRepoTx.HasPurchaseReferences(ctx, eu.ID)
+				hasPurchRef, err := purchaseBatchRepoTx.HasUnitReferences(ctx, eu.ID)
 				if err != nil {
 					return err
 				}
@@ -333,7 +345,7 @@ func (u *ProductUsecase) DeleteProduct(ctx context.Context, id string) error {
 
 	// Cek referensi: produk yang sudah dipakai di transaksi/pembelian/stok tidak boleh dihapus,
 	// hanya bisa dinonaktifkan via PATCH /:id/status.
-	hasTransactions, err := u.productRepo.HasTransactionReferences(ctx, id)
+	hasTransactions, err := u.transactionRepo.HasProductReferences(ctx, id)
 	if err != nil {
 		return errs.NewInternal("failed to check transaction references")
 	}
@@ -341,7 +353,7 @@ func (u *ProductUsecase) DeleteProduct(ctx context.Context, id string) error {
 		return errs.NewConflict("produk sudah digunakan dalam transaksi, gunakan deactivate")
 	}
 
-	hasPurchases, err := u.productRepo.HasPurchaseReferences(ctx, id)
+	hasPurchases, err := u.purchaseBatchRepo.HasPurchaseReferences(ctx, id)
 	if err != nil {
 		return errs.NewInternal("failed to check purchase references")
 	}
@@ -349,7 +361,7 @@ func (u *ProductUsecase) DeleteProduct(ctx context.Context, id string) error {
 		return errs.NewConflict("produk sudah digunakan dalam pembelian, gunakan deactivate")
 	}
 
-	hasMutations, err := u.productRepo.HasStockMutationReferences(ctx, id)
+	hasMutations, err := u.stockMutationRepo.HasStockMutationReferences(ctx, id)
 	if err != nil {
 		return errs.NewInternal("failed to check stock mutation references")
 	}

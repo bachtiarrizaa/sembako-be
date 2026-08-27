@@ -16,11 +16,6 @@ type ProductRepository interface {
 	Update(ctx context.Context, product *entity.Product) error
 	Delete(ctx context.Context, id string) error
 	WithTx(tx *gorm.DB) ProductRepository
-	// TODO: Pindahkan ke masing-masing repository (TransactionItemRepository, PurchaseBatchRepository, StockMutationRepository)
-	// ketika modul-modul tersebut sudah diimplementasi. Saat ini ditaruh di sini karena modul belum ada.
-	HasTransactionReferences(ctx context.Context, productID string) (bool, error)
-	HasPurchaseReferences(ctx context.Context, productID string) (bool, error)
-	HasStockMutationReferences(ctx context.Context, productID string) (bool, error)
 }
 
 type productRepositoryImpl struct {
@@ -115,46 +110,4 @@ func (r *productRepositoryImpl) Update(ctx context.Context, product *entity.Prod
 
 func (r *productRepositoryImpl) Delete(ctx context.Context, id string) error {
 	return r.db.WithContext(ctx).Delete(&entity.Product{}, "id = ?", id).Error
-}
-
-// TODO: Pindahkan ke TransactionItemRepository ketika modul transaksi sudah diimplementasi.
-func (r *productRepositoryImpl) HasTransactionReferences(ctx context.Context, productID string) (bool, error) {
-	if !r.db.Migrator().HasTable("transaction_items") {
-		return false, nil
-	}
-	var count int64
-	err := r.db.WithContext(ctx).Table("transaction_items").
-		Joins("JOIN product_units ON product_units.id = transaction_items.product_unit_id").
-		Where("product_units.product_id = ?", productID).
-		Count(&count).Error
-	if err != nil {
-		return false, err
-	}
-	return count > 0, nil
-}
-
-func (r *productRepositoryImpl) HasPurchaseReferences(ctx context.Context, productID string) (bool, error) {
-	var count int64
-	err := r.db.WithContext(ctx).Table("purchase_batches").
-		Where("product_id = ?", productID).
-		Count(&count).Error
-	if err != nil {
-		return false, err
-	}
-	return count > 0, nil
-}
-
-// TODO: Pindahkan ke StockMutationRepository ketika modul stok sudah diimplementasi.
-func (r *productRepositoryImpl) HasStockMutationReferences(ctx context.Context, productID string) (bool, error) {
-	if !r.db.Migrator().HasTable("stock_mutations") {
-		return false, nil
-	}
-	var count int64
-	err := r.db.WithContext(ctx).Table("stock_mutations").
-		Where("product_id = ?", productID).
-		Count(&count).Error
-	if err != nil {
-		return false, err
-	}
-	return count > 0, nil
 }
