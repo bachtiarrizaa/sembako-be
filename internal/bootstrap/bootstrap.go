@@ -13,6 +13,7 @@ import (
 	"github.com/bachtiarrizaa/sembako-be/internal/pkg/brevo"
 	"github.com/bachtiarrizaa/sembako-be/internal/repository"
 	"github.com/bachtiarrizaa/sembako-be/internal/usecase"
+	"github.com/bachtiarrizaa/sembako-be/internal/usecase/transaction"
 )
 
 func InitializeApp(cfg *config.Config) (*gin.Engine, error) {
@@ -115,7 +116,7 @@ func InitializeApp(cfg *config.Config) (*gin.Engine, error) {
 	stockUsecase := usecase.NewStockUsecase(db, stockRepo, stockMutationRepo, stockCountRepo, productRepo, permissionUsecase)
 	stockController := controller.NewStockController(stockUsecase)
 
-	transactionUsecase := usecase.NewTransactionUsecase(
+	transactionUsecase := transaction.NewTransactionUsecase(
 		db,
 		transactionRepo,
 		shiftRepo,
