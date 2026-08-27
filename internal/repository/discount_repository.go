@@ -15,6 +15,7 @@ type DiscountRepository interface {
 	FindByName(ctx context.Context, name string) (*entity.Discount, error)
 	Update(ctx context.Context, discount *entity.Discount) error
 	Delete(ctx context.Context, id string) error
+	WithTx(tx *gorm.DB) DiscountRepository
 }
 
 type discountRepositoryImpl struct {
@@ -25,6 +26,10 @@ func NewDiscountRepository(db *gorm.DB) DiscountRepository {
 	return &discountRepositoryImpl{db: db}
 }
 
+func (r *discountRepositoryImpl) WithTx(tx *gorm.DB) DiscountRepository {
+	return &discountRepositoryImpl{db: tx}
+}
+
 func (r *discountRepositoryImpl) Create(ctx context.Context, discount *entity.Discount) error {
 	return r.db.WithContext(ctx).Create(discount).Error
 }
@@ -33,7 +38,11 @@ func (r *discountRepositoryImpl) FindDiscounts(ctx context.Context, req model.Pa
 	var discounts []entity.Discount
 	var total int64
 
-	query := r.db.WithContext(ctx).Model(&entity.Discount{})
+	query := r.db.WithContext(ctx).
+		Model(&entity.Discount{}).
+		Preload(`ProductDiscounts.Product.Category`).
+		Preload(`ProductDiscounts.Product.Units.Unit`).
+		Preload(`ProductDiscounts.Product`)
 
 	if req.Search != "" {
 		query = query.Where("name ILIKE ?", "%"+req.Search+"%")
@@ -53,8 +62,11 @@ func (r *discountRepositoryImpl) FindDiscounts(ctx context.Context, req model.Pa
 
 func (r *discountRepositoryImpl) FindById(ctx context.Context, id string) (*entity.Discount, error) {
 	var discount entity.Discount
-	err := r.db.WithContext(ctx).First(&discount, "id = ?", id).Error
-	if err != nil {
+	if err := r.db.WithContext(ctx).
+		Preload(`ProductDiscounts.Product.Category`).
+		Preload(`ProductDiscounts.Product.Units.Unit`).
+		Preload(`ProductDiscounts.Product`).
+		First(&discount, "id = ?", id).Error; err != nil {
 		return nil, err
 	}
 	return &discount, nil
