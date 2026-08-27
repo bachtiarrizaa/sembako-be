@@ -70,7 +70,8 @@ func (r *productRepositoryImpl) FindProducts(ctx context.Context, req model.GetP
 			Preload("Units", func(db *gorm.DB) *gorm.DB {
 				return db.Order("product_units.is_base_unit DESC, product_units.conversion_to_base ASC, product_units.id ASC")
 			}).
-			Preload("Units.Unit")
+			Preload("Units.Unit").
+			Preload("ProductDiscounts.Discount")
 	}
 
 	if err := query.
@@ -92,6 +93,7 @@ func (r *productRepositoryImpl) FindById(ctx context.Context, id string) (*entit
 			return db.Order("product_units.is_base_unit DESC, product_units.conversion_to_base ASC, product_units.id ASC")
 		}).
 		Preload("Units.Unit").
+		Preload("ProductDiscounts.Discount").
 		Preload("Stock").
 		First(&product, "id = ?", id).Error; err != nil {
 		return nil, err
