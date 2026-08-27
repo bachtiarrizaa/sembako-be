@@ -49,26 +49,16 @@ func AuthMiddleware(jwtAccessSecret string, blacklistRepo repository.BlacklistRe
 			return
 		}
 
-		c.Set(ContextKeyUserID, claims.UserID)
-		c.Set(ContextKeyRole, claims.Role)
+		c.Set(utils.ContextKeyUserID, claims.UserID)
+		c.Set(utils.ContextKeyRole, claims.Role)
 		c.Next()
 	}
 }
 
 func GetUserID(c *gin.Context) (uuid.UUID, bool) {
-	val, exists := c.Get(ContextKeyUserID)
-	if !exists {
-		return uuid.Nil, false
-	}
-	id, ok := val.(uuid.UUID)
-	return id, ok
+	return utils.GetUserID(c)
 }
 
 func GetRole(c *gin.Context) (string, bool) {
-	val, exists := c.Get(ContextKeyRole)
-	if !exists {
-		return "", false
-	}
-	role, ok := val.(string)
-	return role, ok
+	return utils.GetRole(c)
 }

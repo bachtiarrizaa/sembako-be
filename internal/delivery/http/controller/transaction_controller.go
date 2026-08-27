@@ -3,20 +3,19 @@ package controller
 import (
 	"net/http"
 
-	"github.com/bachtiarrizaa/sembako-be/internal/delivery/http/middleware"
 	"github.com/bachtiarrizaa/sembako-be/internal/model"
 	"github.com/bachtiarrizaa/sembako-be/internal/pkg/utils"
-	"github.com/bachtiarrizaa/sembako-be/internal/usecase"
+	"github.com/bachtiarrizaa/sembako-be/internal/usecase/transaction"
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
 )
 
 type TransactionController struct {
-	usecase   usecase.TransactionUsecase
+	usecase   transaction.TransactionUsecase
 	validator *validator.Validate
 }
 
-func NewTransactionController(usecase usecase.TransactionUsecase) *TransactionController {
+func NewTransactionController(usecase transaction.TransactionUsecase) *TransactionController {
 	return &TransactionController{
 		usecase:   usecase,
 		validator: validator.New(),
@@ -24,9 +23,8 @@ func NewTransactionController(usecase usecase.TransactionUsecase) *TransactionCo
 }
 
 func (c *TransactionController) CreateTransaction(ctx *gin.Context) {
-	userID, exists := middleware.GetUserID(ctx)
-	if !exists {
-		utils.ErrorResponse(ctx, http.StatusUnauthorized, "unauthorized")
+	userID, ok := utils.GetUserID(ctx)
+	if !ok {
 		return
 	}
 
@@ -51,15 +49,8 @@ func (c *TransactionController) CreateTransaction(ctx *gin.Context) {
 }
 
 func (c *TransactionController) GetTransactionByID(ctx *gin.Context) {
-	userID, exists := middleware.GetUserID(ctx)
-	if !exists {
-		utils.ErrorResponse(ctx, http.StatusUnauthorized, "unauthorized")
-		return
-	}
-
-	role, exists := middleware.GetRole(ctx)
-	if !exists {
-		utils.ErrorResponse(ctx, http.StatusUnauthorized, "unauthorized")
+	userID, role, ok := utils.GetUserAndRole(ctx)
+	if !ok {
 		return
 	}
 
@@ -79,15 +70,8 @@ func (c *TransactionController) GetTransactionByID(ctx *gin.Context) {
 }
 
 func (c *TransactionController) ListTransactions(ctx *gin.Context) {
-	userID, exists := middleware.GetUserID(ctx)
-	if !exists {
-		utils.ErrorResponse(ctx, http.StatusUnauthorized, "unauthorized")
-		return
-	}
-
-	role, exists := middleware.GetRole(ctx)
-	if !exists {
-		utils.ErrorResponse(ctx, http.StatusUnauthorized, "unauthorized")
+	userID, role, ok := utils.GetUserAndRole(ctx)
+	if !ok {
 		return
 	}
 
@@ -111,4 +95,36 @@ func (c *TransactionController) ListTransactions(ctx *gin.Context) {
 	}
 
 	utils.SuccessResponseWithPagination(ctx, http.StatusOK, "transactions fetched successfully", res, pagination)
+}
+
+func (c *TransactionController) VoidTransaction(ctx *gin.Context) {
+	userID, ok := utils.GetUserID(ctx)
+	if !ok {
+		return
+	}
+
+	id := ctx.Param("id")
+	if id == "" {
+		utils.ErrorResponse(ctx, http.StatusBadRequest, "invalid transaction id")
+		return
+	}
+
+	var req model.VoidTransactionRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		utils.ErrorResponse(ctx, http.StatusBadRequest, "invalid body request")
+		return
+	}
+
+	if err := c.validator.Struct(req); err != nil {
+		utils.ErrorResponse(ctx, http.StatusUnprocessableEntity, utils.FormatValidationError(err))
+		return
+	}
+
+	res, err := c.usecase.VoidTransaction(ctx.Request.Context(), id, userID.String(), req)
+	if err != nil {
+		utils.HandleError(ctx, err)
+		return
+	}
+
+	utils.SuccessResponse(ctx, http.StatusOK, "transaction voided successfully", res)
 }

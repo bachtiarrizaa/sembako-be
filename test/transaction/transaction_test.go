@@ -14,7 +14,7 @@ import (
 	"github.com/bachtiarrizaa/sembako-be/internal/entity"
 	"github.com/bachtiarrizaa/sembako-be/internal/model"
 	"github.com/bachtiarrizaa/sembako-be/internal/repository"
-	"github.com/bachtiarrizaa/sembako-be/internal/usecase"
+	"github.com/bachtiarrizaa/sembako-be/internal/usecase/transaction"
 )
 
 func setupTransactionTestDB(t *testing.T) *gorm.DB {
@@ -51,7 +51,7 @@ func TestTransactionUsecase_CreateTransaction(t *testing.T) {
 	costAllocationRepo := repository.NewTransactionItemCostAllocationRepository(db)
 
 	transactionRepo := repository.NewTransactionRepository(db)
-	transactionUsecase := usecase.NewTransactionUsecase(
+	transactionUsecase := transaction.NewTransactionUsecase(
 		db,
 		transactionRepo,
 		shiftRepo,
@@ -300,7 +300,7 @@ func TestTransactionUsecase_CreateTransaction(t *testing.T) {
 		}
 
 		// Verify detail item
-		detailTrx, err := transactionUsecase.GetTransactionByID(ctx, res2.ID, cashierID.String(), "cashier")
+		detailTrx, err := transactionUsecase.GetTransactionByID(ctx, res2.ID, cashierID.String(), "admin")
 		if err != nil {
 			t.Fatalf("failed to load detail: %v", err)
 		}
@@ -356,7 +356,7 @@ func TestTransactionUsecase_CreateTransaction(t *testing.T) {
 		}
 
 		// Verify detail item record
-		detailDiscount, err := transactionUsecase.GetTransactionByID(ctx, resDiscount.ID, cashierID.String(), "cashier")
+		detailDiscount, err := transactionUsecase.GetTransactionByID(ctx, resDiscount.ID, cashierID.String(), "admin")
 		if err != nil {
 			t.Fatalf("failed to load detail: %v", err)
 		}
@@ -554,6 +554,109 @@ func TestTransactionUsecase_CreateTransaction(t *testing.T) {
 		}
 		if *resCross.ChangeGiven != 50000.0 {
 			t.Errorf("expected change 50000, got %.2f", *resCross.ChangeGiven)
+		}
+	})
+
+	// Case 10: Void Transaksi Berhasil (Stok & Batch FIFO Dikembalikan Utuh)
+	t.Run("Successful Void Transaction with stock and FIFO batch restoration", func(t *testing.T) {
+		// Buat transaksi baru untuk di-void
+		reqToVoid := model.CreateTransactionRequest{
+			CustomerID:    &customer.ID,
+			PaymentMethod: "cash",
+			CashReceived:  float64Ptr(50000),
+			Items: []model.CreateTransactionItem{
+				{
+					ProductUnitID: productUnit.ID,
+					Qty:           2.0,
+				},
+			},
+		}
+
+		stockBefore, _ := stockRepo.GetByProductID(ctx, product.ID)
+		batchBefore, _ := purchaseBatchRepo.FindByID(ctx, batch2.ID)
+
+		resTrx, err := transactionUsecase.CreateTransaction(ctx, cashierID.String(), reqToVoid)
+		if err != nil {
+			t.Fatalf("failed to create transaction to void: %v", err)
+		}
+
+		// Pastikan stok berkurang 2.0 setelah checkout
+		stockMid, _ := stockRepo.GetByProductID(ctx, product.ID)
+		if stockMid.QtyBaseUnit != stockBefore.QtyBaseUnit-2.0 {
+			t.Errorf("expected stock to decrease by 2.0, before: %.2f, mid: %.2f", stockBefore.QtyBaseUnit, stockMid.QtyBaseUnit)
+		}
+
+		// Lakukan Void Transaksi
+		voidReq := model.VoidTransactionRequest{
+			Reason: "Pembeli membatalkan pesanan karena salah varian",
+		}
+		voidRes, err := transactionUsecase.VoidTransaction(ctx, resTrx.ID, cashierID.String(), voidReq)
+		if err != nil {
+			t.Fatalf("expected void to succeed, got: %v", err)
+		}
+
+		// Validasi Status & Audit Trail Transaksi
+		if voidRes.Status != "void" {
+			t.Errorf("expected status 'void', got '%s'", voidRes.Status)
+		}
+		if voidRes.VoidReason == nil || *voidRes.VoidReason != voidReq.Reason {
+			t.Errorf("expected voidReason '%s', got '%v'", voidReq.Reason, voidRes.VoidReason)
+		}
+		if voidRes.VoidedByUser == nil || voidRes.VoidedByUser.ID != cashierID.String() {
+			t.Errorf("expected voidedByUser '%s', got '%v'", cashierID.String(), voidRes.VoidedByUser)
+		}
+		if voidRes.VoidedAt == nil {
+			t.Errorf("expected voidedAt not to be nil")
+		}
+
+		// Validasi Stok Kembali Utuh
+		stockAfter, _ := stockRepo.GetByProductID(ctx, product.ID)
+		if stockAfter.QtyBaseUnit != stockBefore.QtyBaseUnit {
+			t.Errorf("expected stock to be restored to %.2f, got %.2f", stockBefore.QtyBaseUnit, stockAfter.QtyBaseUnit)
+		}
+
+		// Validasi Batch FIFO Kembali Utuh
+		batchAfter, _ := purchaseBatchRepo.FindByID(ctx, batch2.ID)
+		if batchAfter.RemainingQty != batchBefore.RemainingQty {
+			t.Errorf("expected batch remaining qty to be restored to %.2f, got %.2f", batchBefore.RemainingQty, batchAfter.RemainingQty)
+		}
+
+		// Case 11: Ditolak jika transaksi sudah pernah di-void
+		_, err = transactionUsecase.VoidTransaction(ctx, resTrx.ID, cashierID.String(), voidReq)
+		if err == nil {
+			t.Errorf("expected error when voiding already voided transaction, got nil")
+		}
+	})
+
+	// Case 12: Ditolak jika Shift sudah ditutup (Closed Shift)
+	t.Run("Reject Void when Shift is closed", func(t *testing.T) {
+		// Buat transaksi pada shift saat ini
+		reqTrx := model.CreateTransactionRequest{
+			CustomerID:    &customer.ID,
+			PaymentMethod: "cash",
+			CashReceived:  float64Ptr(50000),
+			Items: []model.CreateTransactionItem{
+				{
+					ProductUnitID: productUnit.ID,
+					Qty:           1.0,
+				},
+			},
+		}
+		resTrx, err := transactionUsecase.CreateTransaction(ctx, cashierID.String(), reqTrx)
+		if err != nil {
+			t.Fatalf("failed to create transaction: %v", err)
+		}
+
+		// Tutup shift kasir
+		db.Model(&shift).Update("status", "closed")
+
+		// Coba void setelah shift tutup -> Harus Ditolak!
+		voidReq := model.VoidTransactionRequest{
+			Reason: "Mencoba void setelah shift ditutup",
+		}
+		_, err = transactionUsecase.VoidTransaction(ctx, resTrx.ID, cashierID.String(), voidReq)
+		if err == nil {
+			t.Errorf("expected error voiding transaction from a closed shift, got nil")
 		}
 	})
 }
