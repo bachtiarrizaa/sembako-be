@@ -73,7 +73,7 @@ func (u *DiscountUsecase) CreateDiscount(ctx context.Context, req model.CreateDi
 
 		discount = &entity.Discount{
 			Name:      req.Name,
-			Type:      req.Type,
+			Type:      entity.DiscountType(req.Type),
 			Value:     req.Value,
 			StartDate: req.StartDate,
 			EndDate:   req.EndDate,
@@ -206,7 +206,7 @@ func (u *DiscountUsecase) UpdateDiscount(ctx context.Context, id string, req mod
 		}
 
 		if req.Type != nil {
-			discount.Type = *req.Type
+			discount.Type = entity.DiscountType(*req.Type)
 		}
 		if req.Value != nil {
 			discount.Value = *req.Value
@@ -225,7 +225,7 @@ func (u *DiscountUsecase) UpdateDiscount(ctx context.Context, id string, req mod
 		if discount.Value.LessThanOrEqual(decimal.Zero) {
 			return errs.NewBadRequest("discount value must be greater than 0")
 		}
-		if discount.Type == "percent" && discount.Value.GreaterThan(decimal.NewFromInt(100)) {
+		if discount.Type == entity.DiscountTypePercent && discount.Value.GreaterThan(decimal.NewFromInt(100)) {
 			return errs.NewBadRequest("percent discount cannot exceed 100")
 		}
 		if discount.StartDate != nil && discount.EndDate != nil {
