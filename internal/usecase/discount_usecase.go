@@ -87,10 +87,14 @@ func (u *DiscountUsecase) CreateDiscount(ctx context.Context, req model.CreateDi
 		if len(req.Products) > 0 {
 			productDiscounts := make([]entity.ProductDiscount, 0, len(req.Products))
 			for _, p := range req.Products {
+				isActive := true
+				if p.IsActive != nil {
+					isActive = *p.IsActive
+				}
 				productDiscounts = append(productDiscounts, entity.ProductDiscount{
 					DiscountID: discount.ID,
 					ProductID:  p.ProductID,
-					IsActive:   true,
+					IsActive:   isActive,
 				})
 			}
 
@@ -242,10 +246,14 @@ func (u *DiscountUsecase) UpdateDiscount(ctx context.Context, id string, req mod
 			if len(req.Products) > 0 {
 				productDiscounts := make([]entity.ProductDiscount, 0, len(req.Products))
 				for _, p := range req.Products {
+					isActive := true
+					if p.IsActive != nil {
+						isActive = *p.IsActive
+					}
 					productDiscounts = append(productDiscounts, entity.ProductDiscount{
 						DiscountID: discount.ID,
 						ProductID:  p.ProductID,
-						IsActive:   true,
+						IsActive:   isActive,
 					})
 				}
 
