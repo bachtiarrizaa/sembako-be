@@ -10,6 +10,7 @@ import (
 
 type CreateProductInDiscountRequest struct {
 	ProductID string `json:"productId" validate:"required,uuid"`
+	IsActive  *bool  `json:"isActive,omitempty"`
 }
 
 type CreateDiscountRequest struct {
