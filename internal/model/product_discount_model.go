@@ -43,9 +43,10 @@ func CalculateDiscountPrice(sellingPrice float64, discountType string, discountV
 	var discountAmount float64
 	val, _ := discountValue.Float64()
 
-	if discountType == "percent" {
+	switch entity.DiscountType(discountType) {
+	case entity.DiscountTypePercent:
 		discountAmount = sellingPrice * (val / 100.0)
-	} else if discountType == "fixed" {
+	case entity.DiscountTypeFixed:
 		discountAmount = val
 	}
 
@@ -88,7 +89,7 @@ func ToProductDiscountResponse(d *entity.ProductDiscount) ProductDiscountRespons
 	if len(d.Product.Units) > 0 {
 		units = make([]ProductUnitInDiscountResponse, 0, len(d.Product.Units))
 		for _, u := range d.Product.Units {
-			discountAmount, discountedPrice := CalculateDiscountPrice(u.SellingPrice, d.Discount.Type, d.Discount.Value)
+			discountAmount, discountedPrice := CalculateDiscountPrice(u.SellingPrice, string(d.Discount.Type), d.Discount.Value)
 			units = append(units, ProductUnitInDiscountResponse{
 				ID: u.ID,
 				Unit: UnitInProductResponse{
