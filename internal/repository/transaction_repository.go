@@ -10,6 +10,7 @@ import (
 
 type TransactionRepository interface {
 	Create(ctx context.Context, transaction *entity.Transaction) error
+	Update(ctx context.Context, transaction *entity.Transaction) error
 	FindByID(ctx context.Context, id string) (*entity.Transaction, error)
 	FindTransactions(ctx context.Context, req model.ListTransactionsRequest, restrictToCashierID *string) ([]entity.Transaction, int64, error)
 	GetTotalCashSalesByShift(ctx context.Context, shiftID string) (float64, error)
@@ -32,6 +33,10 @@ func (r *transactionRepositoryImpl) WithTx(tx *gorm.DB) TransactionRepository {
 
 func (r *transactionRepositoryImpl) Create(ctx context.Context, transaction *entity.Transaction) error {
 	return r.db.WithContext(ctx).Create(transaction).Error
+}
+
+func (r *transactionRepositoryImpl) Update(ctx context.Context, transaction *entity.Transaction) error {
+	return r.db.WithContext(ctx).Save(transaction).Error
 }
 
 func (r *transactionRepositoryImpl) FindByID(ctx context.Context, id string) (*entity.Transaction, error) {
@@ -134,4 +139,3 @@ func (r *transactionRepositoryImpl) HasUnitReferences(ctx context.Context, unitI
 	}
 	return count > 0, nil
 }
-

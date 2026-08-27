@@ -6,9 +6,8 @@ import (
 	"github.com/bachtiarrizaa/sembako-be/internal/entity"
 )
 
-type CreateTransactionItem struct {
-	ProductUnitID string  `json:"productUnitId" validate:"required,uuid"`
-	Qty           float64 `json:"qty" validate:"required,gt=0"`
+type VoidTransactionRequest struct {
+	Reason string `json:"reason" validate:"required,min=5,max=255"`
 }
 
 type CreateTransactionRequest struct {
@@ -26,19 +25,6 @@ type ListTransactionsRequest struct {
 	CustomerID    *string `form:"customerId"`
 	PaymentMethod *string `form:"paymentMethod"`
 	Status        *string `form:"status"`
-}
-
-type TransactionItemResponse struct {
-	ID              string   `json:"id"`
-	ProductUnitID   string   `json:"productUnitId"`
-	ProductName     string   `json:"productName"`
-	UnitName        string   `json:"unitName"`
-	Qty             float64  `json:"qty"`
-	UnitPrice       float64  `json:"unitPrice"`
-	DiscountApplied float64  `json:"discountApplied"`
-	Subtotal        float64  `json:"subtotal"`
-	TotalCost       *float64 `json:"totalCost,omitempty"`
-	Margin          *float64 `json:"margin,omitempty"`
 }
 
 type TransactionCashierResponse struct {
@@ -73,22 +59,7 @@ type TransactionResponse struct {
 	VoidedAt               *time.Time                   `json:"voidedAt"`
 	CreatedAt              time.Time                    `json:"createdAt"`
 	UpdatedAt              time.Time                    `json:"updatedAt"`
-	Items                  []TransactionItemResponse    `json:"items,omitempty"`
-}
-
-func ToTransactionItemResponse(ti *entity.TransactionItem) TransactionItemResponse {
-	return TransactionItemResponse{
-		ID:              ti.ID,
-		ProductUnitID:   ti.ProductUnitID,
-		ProductName:     ti.ProductUnit.Product.Name,
-		UnitName:        ti.ProductUnit.Unit.Name,
-		Qty:             ti.Qty,
-		UnitPrice:       ti.UnitPrice,
-		DiscountApplied: ti.DiscountApplied,
-		Subtotal:        ti.Subtotal,
-		TotalCost:       ti.TotalCost,
-		Margin:          ti.Margin,
-	}
+	Items                  []TransactionItemResponse    `json:"items"`
 }
 
 func ToTransactionResponse(t *entity.Transaction) TransactionResponse {
