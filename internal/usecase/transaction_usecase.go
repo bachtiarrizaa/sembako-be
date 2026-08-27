@@ -62,12 +62,13 @@ func NewTransactionUsecase(
 }
 
 type preparedTrxItem struct {
-	productUnit *entity.ProductUnit
-	product     *entity.Product
-	qtyInBase   float64
-	qty         float64
-	unitPrice   float64
-	subtotal    float64
+	productUnit     *entity.ProductUnit
+	product         *entity.Product
+	qtyInBase       float64
+	qty             float64
+	unitPrice       float64
+	discountApplied float64
+	subtotal        float64
 }
 
 func (u *transactionUsecaseImpl) CreateTransaction(ctx context.Context, cashierID string, req model.CreateTransactionRequest) (*model.TransactionResponse, error) {
@@ -107,6 +108,8 @@ func (u *transactionUsecaseImpl) CreateTransaction(ctx context.Context, cashierI
 
 	preparedItems := make([]preparedTrxItem, 0, len(req.Items))
 	var subtotal float64 = 0
+	var totalDiscount float64 = 0
+	now := time.Now()
 
 	for _, item := range req.Items {
 		// Fetch product unit
@@ -132,22 +135,57 @@ func (u *transactionUsecaseImpl) CreateTransaction(ctx context.Context, cashierI
 			return nil, errs.NewConflict("cannot sell an inactive product: " + product.Name)
 		}
 
+		// Cari disckon aktif untuk produk
+		var activeDiscount *entity.Discount
+		for _, pd := range product.ProductDiscounts {
+			if !pd.IsActive {
+				continue
+			}
+			d := pd.Discount
+			if !d.IsActive {
+				continue
+			}
+			if d.StartDate != nil && d.StartDate.After(now) {
+				continue
+			}
+			if d.EndDate != nil && d.EndDate.Before(now) {
+				continue
+			}
+			activeDiscount = &d
+			break
+		}
+
+		// hitung discount per unit
+		var discountPerUnit float64 = 0
+		if activeDiscount != nil {
+			discountPerUnit, _ = model.CalculateDiscountPrice(
+				unit.SellingPrice,
+				string(activeDiscount.Type),
+				activeDiscount.Value,
+			)
+		}
+
 		qtyInBase := item.Qty * unit.ConversionToBase
-		itemSubtotal := item.Qty * unit.SellingPrice
-		subtotal += itemSubtotal
+		itemGrossSubtotal := item.Qty * unit.SellingPrice
+		itemDiscount := discountPerUnit * item.Qty
+		itemNetSubtotal := itemGrossSubtotal - itemDiscount
+
+		subtotal += itemGrossSubtotal
+		totalDiscount += itemDiscount
 
 		preparedItems = append(preparedItems, preparedTrxItem{
-			productUnit: unit,
-			product:     product,
-			qtyInBase:   qtyInBase,
-			qty:         item.Qty,
-			unitPrice:   unit.SellingPrice,
-			subtotal:    itemSubtotal,
+			productUnit:     unit,
+			product:         product,
+			qtyInBase:       qtyInBase,
+			qty:             item.Qty,
+			unitPrice:       unit.SellingPrice,
+			discountApplied: itemDiscount,
+			subtotal:        itemNetSubtotal,
 		})
 	}
 
 	// 4. Validasi Keuangan Transaksi
-	var total float64 = subtotal // Di Fase 1, belum ada diskon per total transaksi atau poin
+	var total float64 = subtotal - totalDiscount // Di Fase 1, belum ada diskon per total transaksi atau poin
 	var cashReceived *float64
 	var changeGiven *float64
 	var manualPaidConfirmation *bool
@@ -189,7 +227,7 @@ func (u *transactionUsecaseImpl) CreateTransaction(ctx context.Context, cashierI
 			CustomerID:             req.CustomerID,
 			PaymentMethod:          req.PaymentMethod,
 			Subtotal:               subtotal,
-			TotalDiscount:          0, // Fase 1 default 0
+			TotalDiscount:          totalDiscount,
 			PointsUsed:             0, // Fase 1 default 0
 			PointsDiscountValue:    0, // Fase 1 default 0
 			PointsEarned:           0, // Fase 1 default 0
@@ -243,7 +281,7 @@ func (u *transactionUsecaseImpl) CreateTransaction(ctx context.Context, cashierI
 					break
 				}
 				batch := &batches[i]
-				
+
 				// Determine how much we can allocate from this batch
 				var qtyAllocated float64
 				if batch.RemainingQty >= remainingQtyToAllocate {
@@ -280,7 +318,7 @@ func (u *transactionUsecaseImpl) CreateTransaction(ctx context.Context, cashierI
 				ProductUnitID:   pi.productUnit.ID,
 				Qty:             pi.qty,
 				UnitPrice:       pi.unitPrice,
-				DiscountApplied: 0, // Fase 1 default 0
+				DiscountApplied: pi.discountApplied,
 				Subtotal:        pi.subtotal,
 				TotalCost:       &totalCostForItem,
 				Margin:          &margin,
