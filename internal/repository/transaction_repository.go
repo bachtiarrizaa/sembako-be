@@ -13,6 +13,8 @@ type TransactionRepository interface {
 	FindByID(ctx context.Context, id string) (*entity.Transaction, error)
 	FindTransactions(ctx context.Context, req model.ListTransactionsRequest, restrictToCashierID *string) ([]entity.Transaction, int64, error)
 	GetTotalCashSalesByShift(ctx context.Context, shiftID string) (float64, error)
+	HasProductReferences(ctx context.Context, productID string) (bool, error)
+	HasUnitReferences(ctx context.Context, unitID string) (bool, error)
 	WithTx(tx *gorm.DB) TransactionRepository
 }
 
@@ -109,3 +111,27 @@ func (r *transactionRepositoryImpl) GetTotalCashSalesByShift(ctx context.Context
 	}
 	return total, nil
 }
+
+func (r *transactionRepositoryImpl) HasProductReferences(ctx context.Context, productID string) (bool, error) {
+	var count int64
+	err := r.db.WithContext(ctx).Table("transaction_items").
+		Joins("JOIN product_units ON product_units.id = transaction_items.product_unit_id").
+		Where("product_units.product_id = ?", productID).
+		Count(&count).Error
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}
+
+func (r *transactionRepositoryImpl) HasUnitReferences(ctx context.Context, unitID string) (bool, error) {
+	var count int64
+	err := r.db.WithContext(ctx).Table("transaction_items").
+		Where("product_unit_id = ?", unitID).
+		Count(&count).Error
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}
+

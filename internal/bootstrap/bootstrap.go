@@ -84,8 +84,6 @@ func InitializeApp(cfg *config.Config) (*gin.Engine, error) {
 
 	productRepo := repository.NewProductRepository(db)
 	productUnitRepo := repository.NewProductUnitRepository(db)
-	productUsecase := usecase.NewProductUsecase(db, productRepo, productUnitRepo)
-	productController := controller.NewProductController(productUsecase, cfg.UploadDir)
 
 	discountRepo := repository.NewDiscountRepository(db)
 	productDiscountRepo := repository.NewProductDiscountRepository(db)
@@ -107,12 +105,16 @@ func InitializeApp(cfg *config.Config) (*gin.Engine, error) {
 	purchaseUsecase := usecase.NewPurchaseUsecase(db, purchaseRepo, purchaseBatchRepo, productRepo, supplierRepo, stockRepo, stockMutationRepo)
 	purchaseController := controller.NewPurchaseController(purchaseUsecase)
 
-	stockUsecase := usecase.NewStockUsecase(db, stockRepo, stockMutationRepo, stockCountRepo, productRepo, permissionUsecase)
-	stockController := controller.NewStockController(stockUsecase)
-
 	shiftRepo := repository.NewShiftRepository(db)
 	transactionRepo := repository.NewTransactionRepository(db)
 	costAllocationRepo := repository.NewTransactionItemCostAllocationRepository(db)
+
+	productUsecase := usecase.NewProductUsecase(db, productRepo, productUnitRepo, transactionRepo, purchaseBatchRepo, stockMutationRepo)
+	productController := controller.NewProductController(productUsecase, cfg.UploadDir)
+
+	stockUsecase := usecase.NewStockUsecase(db, stockRepo, stockMutationRepo, stockCountRepo, productRepo, permissionUsecase)
+	stockController := controller.NewStockController(stockUsecase)
+
 	transactionUsecase := usecase.NewTransactionUsecase(
 		db,
 		transactionRepo,

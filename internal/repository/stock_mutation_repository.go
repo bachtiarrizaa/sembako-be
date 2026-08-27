@@ -9,6 +9,7 @@ import (
 type StockMutationRepository interface {
 	Create(ctx context.Context, mutation *entity.StockMutation) error
 	FindProductMutations(ctx context.Context, productID string, page int, limit int) ([]entity.StockMutation, int64, error)
+	HasStockMutationReferences(ctx context.Context, productID string) (bool, error)
 	WithTx(tx *gorm.DB) StockMutationRepository
 }
 
@@ -47,4 +48,15 @@ func (r *stockMutationRepositoryImpl) FindProductMutations(ctx context.Context, 
 	}
 
 	return mutations, total, nil
+}
+
+func (r *stockMutationRepositoryImpl) HasStockMutationReferences(ctx context.Context, productID string) (bool, error) {
+	var count int64
+	err := r.db.WithContext(ctx).Model(&entity.StockMutation{}).
+		Where("product_id = ?", productID).
+		Count(&count).Error
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
 }
