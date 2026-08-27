@@ -6,10 +6,17 @@ import (
 	"github.com/shopspring/decimal"
 )
 
+type DiscountType string
+
+const (
+	DiscountTypePercent DiscountType = "percent"
+	DiscountTypeFixed   DiscountType = "fixed"
+)
+
 type Discount struct {
 	ID               string            `gorm:"column:id;primaryKey;type:uuid;default:gen_random_uuid()" json:"id"`
 	Name             string            `gorm:"column:name;type:varchar(150);not null" json:"name"`
-	Type             string            `gorm:"column:type;type:varchar(10);not null" json:"type"`
+	Type             DiscountType      `gorm:"column:type;type:varchar(10);not null" json:"type"`
 	Value            decimal.Decimal   `gorm:"column:value;type:numeric(14,2);not null" json:"value"`
 	StartDate        *time.Time        `gorm:"column:start_date" json:"startDate"`
 	EndDate          *time.Time        `gorm:"column:end_date" json:"endDate"`

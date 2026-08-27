@@ -58,7 +58,7 @@ func ToDiscountResponse(d *entity.Discount) DiscountResponse {
 			if len(pd.Product.Units) > 0 {
 				units = make([]ProductUnitInDiscountResponse, 0, len(pd.Product.Units))
 				for _, u := range pd.Product.Units {
-					discountAmount, discountedPrice := CalculateDiscountPrice(u.SellingPrice, d.Type, d.Value)
+					discountAmount, discountedPrice := CalculateDiscountPrice(u.SellingPrice, string(d.Type), d.Value)
 					units = append(units, ProductUnitInDiscountResponse{
 						ID: u.ID,
 						Unit: UnitInProductResponse{
@@ -93,7 +93,7 @@ func ToDiscountResponse(d *entity.Discount) DiscountResponse {
 	return DiscountResponse{
 		ID:        d.ID,
 		Name:      d.Name,
-		Type:      d.Type,
+		Type:      string(d.Type),
 		Value:     d.Value,
 		StartDate: d.StartDate,
 		EndDate:   d.EndDate,
