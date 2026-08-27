@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/bachtiarrizaa/sembako-be/internal/entity"
+	"github.com/shopspring/decimal"
 )
 
 type CreateProductDiscountRequest struct {
@@ -27,10 +28,50 @@ type GetProductDiscountsRequest struct {
 	IsActive   *bool  `form:"isActive"`
 }
 
+type ProductUnitInDiscountResponse struct {
+	ID               string                `json:"id"`
+	Unit             UnitInProductResponse `json:"unit"`
+	ConversionToBase float64               `json:"conversionToBase"`
+	SellingPrice     float64               `json:"sellingPrice"`
+	DiscountAmount   float64               `json:"discountAmount"`
+	DiscountedPrice  float64               `json:"discountedPrice"`
+	IsBaseUnit       bool                  `json:"isBaseUnit"`
+	IsActive         bool                  `json:"isActive"`
+}
+
+func CalculateDiscountPrice(sellingPrice float64, discountType string, discountValue decimal.Decimal) (float64, float64) {
+	var discountAmount float64
+	val, _ := discountValue.Float64()
+
+	if discountType == "percent" {
+		discountAmount = sellingPrice * (val / 100.0)
+	} else if discountType == "fixed" {
+		discountAmount = val
+	}
+
+	if discountAmount > sellingPrice {
+		discountAmount = sellingPrice
+	}
+	if discountAmount < 0 {
+		discountAmount = 0
+	}
+
+	discountedPrice := sellingPrice - discountAmount
+	if discountedPrice < 0 {
+		discountedPrice = 0
+	}
+
+	return discountAmount, discountedPrice
+}
+
 type ProductInDiscountResponse struct {
-	ID       string                    `json:"id"`
-	Name     string                    `json:"name"`
-	Category CategoryInProductResponse `json:"category"`
+	ID                string                          `json:"id"`
+	ProductDiscountID string                          `json:"productDiscountId,omitempty"`
+	Name              string                          `json:"name"`
+	Image             *string                         `json:"image"`
+	Category          CategoryInProductResponse       `json:"category"`
+	IsActive          bool                            `json:"isActive"`
+	Units             []ProductUnitInDiscountResponse `json:"units,omitempty"`
 }
 
 type ProductDiscountResponse struct {
@@ -43,15 +84,40 @@ type ProductDiscountResponse struct {
 }
 
 func ToProductDiscountResponse(d *entity.ProductDiscount) ProductDiscountResponse {
+	var units []ProductUnitInDiscountResponse
+	if len(d.Product.Units) > 0 {
+		units = make([]ProductUnitInDiscountResponse, 0, len(d.Product.Units))
+		for _, u := range d.Product.Units {
+			discountAmount, discountedPrice := CalculateDiscountPrice(u.SellingPrice, d.Discount.Type, d.Discount.Value)
+			units = append(units, ProductUnitInDiscountResponse{
+				ID: u.ID,
+				Unit: UnitInProductResponse{
+					ID:   u.Unit.ID,
+					Name: u.Unit.Name,
+				},
+				ConversionToBase: u.ConversionToBase,
+				SellingPrice:     u.SellingPrice,
+				DiscountAmount:   discountAmount,
+				DiscountedPrice:  discountedPrice,
+				IsBaseUnit:       u.IsBaseUnit,
+				IsActive:         u.IsActive,
+			})
+		}
+	}
+
 	return ProductDiscountResponse{
 		ID: d.ID,
 		Product: ProductInDiscountResponse{
-			ID:   d.ProductID,
-			Name: d.Product.Name,
+			ID:                d.ProductID,
+			ProductDiscountID: d.ID,
+			Name:              d.Product.Name,
+			Image:             d.Product.Image,
 			Category: CategoryInProductResponse{
 				ID:   d.Product.CategoryID,
 				Name: d.Product.Category.Name,
 			},
+			IsActive: d.IsActive,
+			Units:    units,
 		},
 		Discount:  ToDiscountResponse(&d.Discount),
 		IsActive:  d.IsActive,
