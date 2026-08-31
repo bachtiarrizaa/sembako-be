@@ -314,3 +314,50 @@ func TestProductDiscount_API(t *testing.T) {
 		t.Fatalf("expected HTTP 404, got %d, body: %s", wGetNotFound.Code, wGetNotFound.Body.String())
 	}
 }
+
+func TestCreateDiscount_WithIsActiveFalse(t *testing.T) {
+	db := setupTestDB(t)
+	defer db.Rollback()
+
+	discountRepo := repository.NewDiscountRepository(db)
+	productDiscountRepo := repository.NewProductDiscountRepository(db)
+	discountUsecase := usecase.NewDiscountUsecase(db, discountRepo, productDiscountRepo)
+
+	cat := entity.Category{Name: "Cat_" + uuid.New().String()[:8]}
+	db.Create(&cat)
+	unit := entity.Unit{Name: "Unit_" + uuid.New().String()[:8]}
+	db.Create(&unit)
+
+	p1 := entity.Product{ID: uuid.New().String(), Name: "P1_" + uuid.New().String()[:8], CategoryID: cat.ID, BaseUnitID: unit.ID, IsActive: true}
+	p2 := entity.Product{ID: uuid.New().String(), Name: "P2_" + uuid.New().String()[:8], CategoryID: cat.ID, BaseUnitID: unit.ID, IsActive: true}
+	db.Create(&p1)
+	db.Create(&p2)
+
+	isFalse := false
+	isTrue := true
+	req := model.CreateDiscountRequest{
+		Name:  "Test Discount " + uuid.New().String()[:8],
+		Type:  "percent",
+		Value: decimal.NewFromInt(10),
+		Products: []model.CreateProductInDiscountRequest{
+			{ProductID: p1.ID, IsActive: &isFalse},
+			{ProductID: p2.ID, IsActive: &isTrue},
+		},
+	}
+
+	res, err := discountUsecase.CreateDiscount(context.Background(), req)
+	if err != nil {
+		t.Fatalf("CreateDiscount error: %v", err)
+	}
+
+	t.Logf("Response Products Count: %d", len(res.Products))
+	for _, p := range res.Products {
+		t.Logf("Product ID: %s, IsActive: %v", p.ID, p.IsActive)
+		if p.ID == p1.ID && p.IsActive != false {
+			t.Errorf("expected product 1 isActive false, got %v", p.IsActive)
+		}
+		if p.ID == p2.ID && p.IsActive != true {
+			t.Errorf("expected product 2 isActive true, got %v", p.IsActive)
+		}
+	}
+}
