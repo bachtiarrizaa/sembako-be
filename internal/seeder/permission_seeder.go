@@ -156,7 +156,7 @@ func SeedPermissions(db *gorm.DB) error {
 	cashierPermNames := []string{
 		"dashboard",
 		"pos:create",
-		"transactions:read",
+		"transactions:read", "transactions:void",
 		"shifts:read", "shifts:create", "shifts:close",
 		"products", "products:read",
 		"discounts", "discounts:read",
