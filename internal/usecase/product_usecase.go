@@ -292,7 +292,7 @@ func (u *ProductUsecase) UpdateProduct(ctx context.Context, id string, req model
 					return err
 				}
 				if hasTransRef {
-					return errs.NewConflict("satuan " + eu.Unit.Name + " tidak dapat dihapus karena sudah memiliki riwayat transaksi, silakan nonaktifkan saja")
+					return errs.NewConflict("cannot delete unit with existing purchase history")
 				}
 
 				hasPurchRef, err := purchaseBatchRepoTx.HasUnitReferences(ctx, eu.ID)
@@ -300,7 +300,7 @@ func (u *ProductUsecase) UpdateProduct(ctx context.Context, id string, req model
 					return err
 				}
 				if hasPurchRef {
-					return errs.NewConflict("satuan " + eu.Unit.Name + " tidak dapat dihapus karena sudah memiliki riwayat pembelian, silakan nonaktifkan saja")
+					return errs.NewConflict("cannot delete unit with existing purchase history")
 				}
 
 				if err := productUnitRepoTx.Delete(ctx, eu.ID); err != nil {
@@ -350,7 +350,7 @@ func (u *ProductUsecase) DeleteProduct(ctx context.Context, id string) error {
 		return errs.NewInternal("failed to check transaction references")
 	}
 	if hasTransactions {
-		return errs.NewConflict("produk sudah digunakan dalam transaksi, gunakan deactivate")
+		return errs.NewConflict("product is already used in transactions, use deactivate instead")
 	}
 
 	hasPurchases, err := u.purchaseBatchRepo.HasPurchaseReferences(ctx, id)
@@ -358,7 +358,7 @@ func (u *ProductUsecase) DeleteProduct(ctx context.Context, id string) error {
 		return errs.NewInternal("failed to check purchase references")
 	}
 	if hasPurchases {
-		return errs.NewConflict("produk sudah digunakan dalam pembelian, gunakan deactivate")
+		return errs.NewConflict("product is already used in purchases, use deactivate instead")
 	}
 
 	hasMutations, err := u.stockMutationRepo.HasStockMutationReferences(ctx, id)
@@ -366,7 +366,7 @@ func (u *ProductUsecase) DeleteProduct(ctx context.Context, id string) error {
 		return errs.NewInternal("failed to check stock mutation references")
 	}
 	if hasMutations {
-		return errs.NewConflict("produk sudah memiliki riwayat stok, gunakan deactivate")
+		return errs.NewConflict("product already has stock history, use deactivate instead")
 	}
 
 	if err := u.productRepo.Delete(ctx, product.ID); err != nil {
