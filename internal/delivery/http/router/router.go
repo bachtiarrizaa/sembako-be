@@ -30,6 +30,7 @@ func Setup(
 	transactionController *controller.TransactionController,
 	reportController *controller.ReportController,
 	storeConfigurationController *controller.StoreConfigurationController,
+	loyaltySettingController *controller.LoyaltySettingController,
 ) {
 	api := router.Group("/api")
 
@@ -66,4 +67,6 @@ func Setup(
 	registerReportRoutes(api, reportController, permissionUsecase, jwtSecret, blacklistRepo)
 
 	registerStoreConfigurationRoutes(api, storeConfigurationController, permissionUsecase, jwtSecret, blacklistRepo)
+
+	registerLoyaltySettingRoutes(api, loyaltySettingController, permissionUsecase, jwtSecret, blacklistRepo)
 }

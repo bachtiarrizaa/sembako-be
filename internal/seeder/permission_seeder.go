@@ -43,7 +43,8 @@ func SeedPermissions(db *gorm.DB) error {
 		{ID: "82000000-0000-0000-0000-000000000000", Name: "purchases:read", Description: "Pembelian", ParentID: ptrString("80000000-0000-0000-0000-000000000000"), Type: "menu", Path: ptrString("/purchases")},
 		// Customers & Loyalty
 		{ID: "91000000-0000-0000-0000-000000000000", Name: "customers:read", Description: "Pelanggan", ParentID: ptrString("90000000-0000-0000-0000-000000000000"), Type: "menu", Path: ptrString("/customers")},
-		{ID: "92000000-0000-0000-0000-000000000000", Name: "loyalty:write", Description: "Pengaturan Poin", ParentID: ptrString("90000000-0000-0000-0000-000000000000"), Type: "menu", Path: ptrString("/loyalty-settings")},
+		{ID: "92000000-0000-0000-0000-000000000000", Name: "loyalty:write", Description: "Pengaturan Poin (Ubah)", ParentID: ptrString("90000000-0000-0000-0000-000000000000"), Type: "menu", Path: ptrString("/loyalty-settings")},
+		{ID: "93000000-0000-0000-0000-000000000000", Name: "loyalty:read", Description: "Pengaturan Poin (Lihat)", ParentID: ptrString("90000000-0000-0000-0000-000000000000"), Type: "menu", Path: ptrString("/loyalty-settings")},
 		// Reports
 		{ID: "a1000000-0000-0000-0000-000000000000", Name: "reports:read", Description: "Semua Laporan", ParentID: ptrString("a0000000-0000-0000-0000-000000000000"), Type: "menu", Path: ptrString("/reports")},
 		// Employees
@@ -161,7 +162,7 @@ func SeedPermissions(db *gorm.DB) error {
 		"products", "products:read",
 		"discounts", "discounts:read",
 		"inventory", "stocks:read", "opname:create", "opname:read",
-		"customers-loyalty", "customers:read", "customers:create", "customers:update", "customers:delete",
+		"customers-loyalty", "customers:read", "customers:create", "customers:update", "customers:delete", "loyalty:read",
 	}
 	if err := db.Where("name IN ?", cashierPermNames).Find(&cashierPerms).Error; err != nil {
 		return err
