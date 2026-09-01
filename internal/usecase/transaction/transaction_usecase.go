@@ -29,6 +29,8 @@ type transactionUsecaseImpl struct {
 	stockMutationRepo  repository.StockMutationRepository
 	purchaseBatchRepo  repository.PurchaseBatchRepository
 	costAllocationRepo repository.TransactionItemCostAllocationRepository
+	loyaltySettingRepo repository.LoyaltySettingRepository
+	pointLedgerRepo    repository.PointLedgerRepository
 }
 
 func NewTransactionUsecase(
@@ -42,6 +44,8 @@ func NewTransactionUsecase(
 	stockMutationRepo repository.StockMutationRepository,
 	purchaseBatchRepo repository.PurchaseBatchRepository,
 	costAllocationRepo repository.TransactionItemCostAllocationRepository,
+	loyaltySettingRepo repository.LoyaltySettingRepository,
+	pointLedgerRepo repository.PointLedgerRepository,
 ) TransactionUsecase {
 	return &transactionUsecaseImpl{
 		db:                 db,
@@ -54,6 +58,8 @@ func NewTransactionUsecase(
 		stockMutationRepo:  stockMutationRepo,
 		purchaseBatchRepo:  purchaseBatchRepo,
 		costAllocationRepo: costAllocationRepo,
+		loyaltySettingRepo: loyaltySettingRepo,
+		pointLedgerRepo:    pointLedgerRepo,
 	}
 }
 

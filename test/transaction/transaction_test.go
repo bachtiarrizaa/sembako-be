@@ -29,6 +29,7 @@ func setupTransactionTestDB(t *testing.T) *gorm.DB {
 	if tx.Error != nil {
 		t.Fatalf("failed to start test transaction: %v", tx.Error)
 	}
+	_ = tx.AutoMigrate(&entity.LoyaltySetting{}, &entity.PointLedger{})
 	return tx
 }
 
@@ -50,6 +51,9 @@ func TestTransactionUsecase_CreateTransaction(t *testing.T) {
 	purchaseBatchRepo := repository.NewPurchaseBatchRepository(db)
 	costAllocationRepo := repository.NewTransactionItemCostAllocationRepository(db)
 
+	loyaltySettingRepo := repository.NewLoyaltySettingRepository(db)
+	pointLedgerRepo := repository.NewPointLedgerRepository(db)
+
 	transactionRepo := repository.NewTransactionRepository(db)
 	transactionUsecase := transaction.NewTransactionUsecase(
 		db,
@@ -62,6 +66,8 @@ func TestTransactionUsecase_CreateTransaction(t *testing.T) {
 		stockMutationRepo,
 		purchaseBatchRepo,
 		costAllocationRepo,
+		loyaltySettingRepo,
+		pointLedgerRepo,
 	)
 
 	// Seed roles & users

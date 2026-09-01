@@ -226,7 +226,7 @@ func TestProductDiscount_API(t *testing.T) {
 		productDiscountController,
 		nil,
 		permissionUsecase,
-		nil, nil, nil, nil, nil, nil, nil,
+		nil, nil, nil, nil, nil, nil, nil, nil,
 	)
 
 	// Test Case 1: POST /api/product-discounts (201 Created)
