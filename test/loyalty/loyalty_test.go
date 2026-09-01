@@ -36,7 +36,7 @@ func setupTestDB(t *testing.T) *gorm.DB {
 	if tx.Error != nil {
 		t.Fatalf("failed to start test transaction: %v", tx.Error)
 	}
-
+	_ = tx.AutoMigrate(&entity.LoyaltySetting{}, &entity.PointLedger{})
 	return tx
 }
 
@@ -168,6 +168,7 @@ func TestLoyaltySetting_API(t *testing.T) {
 		permUsecase,
 		nil, nil, nil, nil, nil, nil,
 		loyaltyController,
+		nil,
 	)
 
 	// Test 1: GET /api/loyalty-settings (200 OK)
