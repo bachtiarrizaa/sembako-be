@@ -11,6 +11,7 @@ import (
 func registerCustomerRoutes(
 	router *gin.RouterGroup,
 	controller *controller.CustomerController,
+	pointLedgerController *controller.PointLedgerController,
 	permissionUsecase *usecase.PermissionUsecase,
 	jwtSecret string,
 	blacklistRepo repository.BlacklistRepository,
@@ -20,6 +21,7 @@ func registerCustomerRoutes(
 		customer.POST("", middleware.RequirePermission(permissionUsecase, "customers:create"), controller.CreateCustomer)
 		customer.GET("", middleware.RequirePermission(permissionUsecase, "customers:read"), controller.GetCustomersWithPagination)
 		customer.GET("/:id", middleware.RequirePermission(permissionUsecase, "customers:read"), controller.GetCustomerById)
+		customer.GET("/:id/point-ledgers", middleware.RequirePermission(permissionUsecase, "customers:read"), pointLedgerController.GetCustomerLedgers)
 		customer.PUT("/:id", middleware.RequirePermission(permissionUsecase, "customers:update"), controller.UpdateCustomer)
 		customer.PATCH("/:id/status", middleware.RequirePermission(permissionUsecase, "customers:update"), controller.UpdateStatus)
 		customer.DELETE("/:id", middleware.RequirePermission(permissionUsecase, "customers:delete"), controller.DeleteCustomer)

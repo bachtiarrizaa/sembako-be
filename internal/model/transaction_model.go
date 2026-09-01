@@ -14,6 +14,7 @@ type CreateTransactionRequest struct {
 	CustomerID    *string                 `json:"customerId" validate:"omitempty,uuid"`
 	PaymentMethod string                  `json:"paymentMethod" validate:"required,oneof=cash qris transfer"`
 	CashReceived  *float64                `json:"cashReceived" validate:"omitempty,gte=0"`
+	UsePoints     *bool                   `json:"usePoints"`
 	Items         []CreateTransactionItem `json:"items" validate:"required,dive,required"`
 }
 

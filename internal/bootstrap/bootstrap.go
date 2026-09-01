@@ -116,6 +116,14 @@ func InitializeApp(cfg *config.Config) (*gin.Engine, error) {
 	stockUsecase := usecase.NewStockUsecase(db, stockRepo, stockMutationRepo, stockCountRepo, productRepo, permissionUsecase)
 	stockController := controller.NewStockController(stockUsecase)
 
+	loyaltySettingRepo := repository.NewLoyaltySettingRepository(db)
+	loyaltySettingUsecase := usecase.NewLoyaltySettingUsecase(loyaltySettingRepo)
+	loyaltySettingController := controller.NewLoyaltySettingController(loyaltySettingUsecase)
+
+	pointLedgerRepo := repository.NewPointLedgerRepository(db)
+	pointLedgerUsecase := usecase.NewPointLedgerUsecase(pointLedgerRepo, loyaltySettingRepo, customerRepo)
+	pointLedgerController := controller.NewPointLedgerController(pointLedgerUsecase)
+
 	transactionUsecase := transaction.NewTransactionUsecase(
 		db,
 		transactionRepo,
@@ -127,6 +135,8 @@ func InitializeApp(cfg *config.Config) (*gin.Engine, error) {
 		stockMutationRepo,
 		purchaseBatchRepo,
 		costAllocationRepo,
+		loyaltySettingRepo,
+		pointLedgerRepo,
 	)
 	transactionController := controller.NewTransactionController(transactionUsecase)
 
@@ -140,10 +150,6 @@ func InitializeApp(cfg *config.Config) (*gin.Engine, error) {
 	storeConfigRepo := repository.NewStoreConfigurationRepository(db)
 	storeConfigUsecase := usecase.NewStoreConfigurationUsecase(storeConfigRepo)
 	storeConfigController := controller.NewStoreConfigurationController(storeConfigUsecase)
-
-	loyaltySettingRepo := repository.NewLoyaltySettingRepository(db)
-	loyaltySettingUsecase := usecase.NewLoyaltySettingUsecase(loyaltySettingRepo)
-	loyaltySettingController := controller.NewLoyaltySettingController(loyaltySettingUsecase)
 
 	app := gin.Default()
 	app.Static("/uploads", cfg.UploadDir)
@@ -177,6 +183,7 @@ func InitializeApp(cfg *config.Config) (*gin.Engine, error) {
 		reportController,
 		storeConfigController,
 		loyaltySettingController,
+		pointLedgerController,
 	)
 
 	return app, nil

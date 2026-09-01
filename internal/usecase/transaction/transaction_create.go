@@ -72,8 +72,42 @@ func (u *transactionUsecaseImpl) CreateTransaction(ctx context.Context, cashierI
 		return nil, err
 	}
 
-	// 4. Validasi Keuangan Transaksi
+	// 4. Validasi Keuangan & Loyalty Points Transaksi
 	total := subtotal - totalDiscount
+	var pointsUsed int = 0
+	var pointsDiscountValue float64 = 0
+	var pointsEarned int = 0
+	var targetCustomer *entity.Customer
+
+	loyaltySetting, _ := u.loyaltySettingRepo.Get(ctx)
+
+	if req.CustomerID != nil && *req.CustomerID != "" {
+		c, err := u.customerRepo.FindById(ctx, *req.CustomerID)
+		if err == nil && c.IsActive {
+			targetCustomer = c
+
+			if req.UsePoints != nil && *req.UsePoints && loyaltySetting != nil && loyaltySetting.RedemptionRate > 0 {
+				if targetCustomer.TotalPoints >= loyaltySetting.MinimumRedeem {
+					maxPointsNeeded := int(total / loyaltySetting.RedemptionRate)
+					if targetCustomer.TotalPoints <= maxPointsNeeded {
+						pointsUsed = targetCustomer.TotalPoints
+					} else {
+						pointsUsed = maxPointsNeeded
+					}
+					pointsDiscountValue = float64(pointsUsed) * loyaltySetting.RedemptionRate
+					total = total - pointsDiscountValue
+					if total < 0 {
+						total = 0
+					}
+				}
+			}
+
+			if loyaltySetting != nil && loyaltySetting.EarningRate > 0 {
+				pointsEarned = int(total / loyaltySetting.EarningRate)
+			}
+		}
+	}
+
 	var cashReceived *float64
 	var changeGiven *float64
 	var manualPaidConfirmation *bool
@@ -114,9 +148,9 @@ func (u *transactionUsecaseImpl) CreateTransaction(ctx context.Context, cashierI
 			PaymentMethod:          req.PaymentMethod,
 			Subtotal:               subtotal,
 			TotalDiscount:          totalDiscount,
-			PointsUsed:             0,
-			PointsDiscountValue:    0,
-			PointsEarned:           0,
+			PointsUsed:             pointsUsed,
+			PointsDiscountValue:    pointsDiscountValue,
+			PointsEarned:           pointsEarned,
 			Total:                  total,
 			CashReceived:           cashReceived,
 			ChangeGiven:            changeGiven,
@@ -128,6 +162,51 @@ func (u *transactionUsecaseImpl) CreateTransaction(ctx context.Context, cashierI
 			return errs.NewInternal("failed to create transaction: " + err.Error())
 		}
 		transactionID = trx.ID
+
+		// Log Loyalty Point Ledgers & Update Customer Total Points
+		if targetCustomer != nil {
+			if pointsUsed > 0 {
+				redeemLedger := &entity.PointLedger{
+					CustomerID:    targetCustomer.ID,
+					TransactionID: &trx.ID,
+					Type:          entity.PointLedgerTypeRedeem,
+					Points:        -pointsUsed,
+					Description:   fmt.Sprintf("Points redeemed for transaction %s", receiptNumber),
+				}
+				if err := u.pointLedgerRepo.Create(ctx, tx, redeemLedger); err != nil {
+					return errs.NewInternal("failed to log redeem point ledger: " + err.Error())
+				}
+			}
+
+			if pointsEarned > 0 {
+				var expiredAt *time.Time
+				if loyaltySetting != nil && loyaltySetting.IsExpiryActive && loyaltySetting.ExpiryMonths > 0 {
+					exp := time.Now().AddDate(0, loyaltySetting.ExpiryMonths, 0)
+					expiredAt = &exp
+				}
+
+				earnLedger := &entity.PointLedger{
+					CustomerID:    targetCustomer.ID,
+					TransactionID: &trx.ID,
+					Type:          entity.PointLedgerTypeEarn,
+					Points:        pointsEarned,
+					Description:   fmt.Sprintf("Points earned from transaction %s", receiptNumber),
+					ExpiredAt:     expiredAt,
+				}
+				if err := u.pointLedgerRepo.Create(ctx, tx, earnLedger); err != nil {
+					return errs.NewInternal("failed to log earn point ledger: " + err.Error())
+				}
+			}
+
+			newTotalPoints := targetCustomer.TotalPoints - pointsUsed + pointsEarned
+			if newTotalPoints < 0 {
+				newTotalPoints = 0
+			}
+			targetCustomer.TotalPoints = newTotalPoints
+			if err := u.customerRepo.Update(ctx, targetCustomer); err != nil {
+				return errs.NewInternal("failed to update customer total points: " + err.Error())
+			}
+		}
 
 		// Process Items, FIFO Costing, & Stock Reduction
 		for _, pi := range preparedItems {
