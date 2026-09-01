@@ -29,6 +29,7 @@ func Setup(
 	shiftController *controller.ShiftController,
 	transactionController *controller.TransactionController,
 	reportController *controller.ReportController,
+	storeConfigurationController *controller.StoreConfigurationController,
 ) {
 	api := router.Group("/api")
 
@@ -63,4 +64,6 @@ func Setup(
 	registerProductDiscountRoutes(api, productDiscountController, permissionUsecase, jwtSecret, blacklistRepo)
 
 	registerReportRoutes(api, reportController, permissionUsecase, jwtSecret, blacklistRepo)
+
+	registerStoreConfigurationRoutes(api, storeConfigurationController, permissionUsecase, jwtSecret, blacklistRepo)
 }
