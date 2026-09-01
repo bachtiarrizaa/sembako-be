@@ -1,0 +1,49 @@
+package model
+
+import (
+	"time"
+
+	"github.com/bachtiarrizaa/sembako-be/internal/entity"
+)
+
+type UpdateStoreConfigurationRequest struct {
+	StoreName                 *string  `json:"storeName" validate:"omitempty,min=1,max=100"`
+	StoreAddress              *string  `json:"storeAddress" validate:"omitempty"`
+	StorePhone                *string  `json:"storePhone" validate:"omitempty,max=20"`
+	ReceiptHeaderText         *string  `json:"receiptHeaderText" validate:"omitempty"`
+	ReceiptFooterText         *string  `json:"receiptFooterText" validate:"omitempty"`
+	ReceiptShowCashierName    *bool    `json:"receiptShowCashierName"`
+	ReceiptShowCustomerName   *bool    `json:"receiptShowCustomerName"`
+	ShiftDiscrepancyTolerance *float64 `json:"shiftDiscrepancyTolerance" validate:"omitempty,min=0"`
+}
+
+type StoreConfigurationResponse struct {
+	ID                        string    `json:"id"`
+	StoreName                 string    `json:"storeName"`
+	StoreAddress              *string   `json:"storeAddress"`
+	StorePhone                *string   `json:"storePhone"`
+	ReceiptHeaderText         *string   `json:"receiptHeaderText"`
+	ReceiptFooterText         *string   `json:"receiptFooterText"`
+	ReceiptShowCashierName    bool      `json:"receiptShowCashierName"`
+	ReceiptShowCustomerName   bool      `json:"receiptShowCustomerName"`
+	ShiftDiscrepancyTolerance float64   `json:"shiftDiscrepancyTolerance"`
+	CreatedAt                 time.Time `json:"createdAt"`
+	UpdatedAt                 time.Time `json:"updatedAt"`
+}
+
+func ToStoreConfigurationResponse(s *entity.StoreConfiguration) StoreConfigurationResponse {
+	resp := StoreConfigurationResponse{
+		ID:                        s.ID,
+		StoreName:                 s.StoreName,
+		StoreAddress:              s.StoreAddress,
+		StorePhone:                s.StorePhone,
+		ReceiptHeaderText:         s.ReceiptHeaderText,
+		ReceiptFooterText:         s.ReceiptFooterText,
+		ReceiptShowCashierName:    s.ReceiptShowCashierName,
+		ReceiptShowCustomerName:   s.ReceiptShowCustomerName,
+		ShiftDiscrepancyTolerance: s.ShiftDiscrepancyTolerance,
+		CreatedAt:                 s.CreatedAt,
+		UpdatedAt:                 s.UpdatedAt,
+	}
+	return resp
+}
