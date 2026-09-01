@@ -7,14 +7,14 @@ import (
 )
 
 type UpdateStoreConfigurationRequest struct {
-	StoreName                 *string  `json:"storeName" validate:"omitempty,min=1,max=100"`
-	StoreAddress              *string  `json:"storeAddress" validate:"omitempty"`
-	StorePhone                *string  `json:"storePhone" validate:"omitempty,max=20"`
-	ReceiptHeaderText         *string  `json:"receiptHeaderText" validate:"omitempty"`
-	ReceiptFooterText         *string  `json:"receiptFooterText" validate:"omitempty"`
-	ReceiptShowCashierName    *bool    `json:"receiptShowCashierName"`
-	ReceiptShowCustomerName   *bool    `json:"receiptShowCustomerName"`
-	ShiftDiscrepancyTolerance *float64 `json:"shiftDiscrepancyTolerance" validate:"omitempty,min=0"`
+	StoreName                 string  `json:"storeName" validate:"required,min=2,max=100"`
+	StoreAddress              string  `json:"storeAddress"`
+	StorePhone                string  `json:"storePhone"`
+	ReceiptHeaderText         string  `json:"receiptHeaderText"`
+	ReceiptFooterText         string  `json:"receiptFooterText"`
+	ReceiptShowCashierName    bool    `json:"receiptShowCashierName"`
+	ReceiptShowCustomerName   bool    `json:"receiptShowCustomerName"`
+	ShiftDiscrepancyTolerance float64 `json:"shiftDiscrepancyTolerance" validate:"gte=0"`
 }
 
 type StoreConfigurationResponse struct {

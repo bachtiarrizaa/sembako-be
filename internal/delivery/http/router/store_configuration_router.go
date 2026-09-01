@@ -18,5 +18,6 @@ func registerStoreConfigurationRoutes(
 	storeConfiguration := router.Group("/settings", middleware.AuthMiddleware(jwtSecret, blacklistRepo))
 	{
 		storeConfiguration.GET("", middleware.RequirePermission(permissionUsecase, "settings:read"), controller.Get)
+		storeConfiguration.PUT("", middleware.RequirePermission(permissionUsecase, "settings:update"), controller.Update)
 	}
 }
