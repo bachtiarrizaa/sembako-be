@@ -12,6 +12,9 @@ func SeedAll(db *gorm.DB) error {
 	if err := SeedUsers(db); err != nil {
 		return err
 	}
+	if err := SeedStoreConfiguration(db); err != nil {
+		return err
+	}
 	if err := SeedDemoData(db); err != nil {
 		return err
 	}
