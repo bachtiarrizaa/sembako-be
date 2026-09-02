@@ -11,6 +11,7 @@ type GetProductsRequest struct {
 	PaginationRequest
 	IsActive   *bool  `form:"is_active"`
 	CategoryID string `form:"category_id"`
+	HasDiscount *bool `form:"has_discount"`
 	Include    string `form:"include"`
 }
 

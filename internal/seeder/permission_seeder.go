@@ -159,7 +159,7 @@ func SeedPermissions(db *gorm.DB) error {
 		"pos:create",
 		"transactions:read", "transactions:void",
 		"shifts:read", "shifts:create", "shifts:close",
-		"products", "products:read",
+		"products", "products:read", "categories:read",
 		"discounts", "discounts:read",
 		"inventory", "stocks:read", "opname:create", "opname:read",
 		"customers-loyalty", "customers:read", "customers:create", "customers:update", "customers:delete", "loyalty:read",

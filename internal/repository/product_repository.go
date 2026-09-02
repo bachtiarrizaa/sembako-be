@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"time"
 
 	"github.com/bachtiarrizaa/sembako-be/internal/entity"
 	"github.com/bachtiarrizaa/sembako-be/internal/model"
@@ -48,6 +49,23 @@ func (r *productRepositoryImpl) FindProducts(ctx context.Context, req model.GetP
 	}
 	if req.CategoryID != "" {
 		query = query.Where("category_id = ?", req.CategoryID)
+	}
+	if req.HasDiscount != nil {
+		now := time.Now()
+		subQuery := r.db.Model(&entity.ProductDiscount{}).
+			Select("1").
+			Joins("JOIN discounts ON discounts.id = product_discounts.discount_id").
+			Where("product_discounts.product_id = products.id").
+			Where("product_discounts.is_active = ?", true).
+			Where("discounts.is_active = ?", true).
+			Where("(discounts.start_date IS NULL OR discounts.start_date <= ?)", now).
+			Where("(discounts.end_date IS NULL OR discounts.end_date >= ?)", now)
+
+		if *req.HasDiscount {
+			query = query.Where("EXISTS (?)", subQuery)
+		} else {
+			query = query.Where("NOT EXISTS (?)", subQuery)
+		}
 	}
 
 	if err := query.Count(&total).Error; err != nil {
