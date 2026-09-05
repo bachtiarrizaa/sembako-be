@@ -28,6 +28,8 @@ func SeedPermissions(db *gorm.DB) error {
 		{ID: "c0000000-0000-0000-0000-000000000000", Name: "settings:read", Description: "Pengaturan", Type: "menu", Path: ptrString("/settings")},
 
 		// Level 2: Sub-menus (Parent ID points to Level 1)
+		// Dashboard
+		{ID: "11000000-0000-0000-0000-000000000000", Name: "dashboard:read", Description: "Lihat Dashboard", ParentID: ptrString("10000000-0000-0000-0000-000000000000"), Type: "menu", Path: ptrString("/dashboard")},
 		// Products
 		{ID: "51000000-0000-0000-0000-000000000000", Name: "products:read", Description: "Daftar Produk", ParentID: ptrString("50000000-0000-0000-0000-000000000000"), Type: "menu", Path: ptrString("/products/list")},
 		{ID: "52000000-0000-0000-0000-000000000000", Name: "units:read", Description: "Satuan", ParentID: ptrString("50000000-0000-0000-0000-000000000000"), Type: "menu", Path: ptrString("/products/units")},
@@ -155,7 +157,7 @@ func SeedPermissions(db *gorm.DB) error {
 
 	var cashierPerms []entity.Permission
 	cashierPermNames := []string{
-		"dashboard",
+		"dashboard", "dashboard:read",
 		"pos:create",
 		"transactions:read", "transactions:void",
 		"shifts:read", "shifts:create", "shifts:close",
@@ -163,6 +165,7 @@ func SeedPermissions(db *gorm.DB) error {
 		"discounts", "discounts:read",
 		"inventory", "stocks:read", "opname:create", "opname:read",
 		"customers-loyalty", "customers:read", "customers:create", "customers:update", "customers:delete", "loyalty:read",
+		"settings:read",
 	}
 	if err := db.Where("name IN ?", cashierPermNames).Find(&cashierPerms).Error; err != nil {
 		return err
