@@ -32,6 +32,20 @@ func (u *StoreConfigurationUsecase) Get(ctx context.Context) (*model.StoreConfig
 	return &resp, nil
 }
 
+func (u *StoreConfigurationUsecase) GetPublicStoreInfo(ctx context.Context) (*model.PublicStoreInfoResponse, error) {
+	storeConfig, err := u.storeConfigurationRepo.Get(ctx)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return &model.PublicStoreInfoResponse{StoreName: "Sembako Store"}, nil
+		}
+		return nil, errs.NewInternal("failed to fetch store configuration")
+	}
+
+	return &model.PublicStoreInfoResponse{
+		StoreName: storeConfig.StoreName,
+	}, nil
+}
+
 func (u *StoreConfigurationUsecase) Update(ctx context.Context, req model.UpdateStoreConfigurationRequest) (*model.StoreConfigurationResponse, error) {
 	storeConfig, err := u.storeConfigurationRepo.Get(ctx)
 	if err != nil {

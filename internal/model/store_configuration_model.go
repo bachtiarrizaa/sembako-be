@@ -31,6 +31,10 @@ type StoreConfigurationResponse struct {
 	UpdatedAt                 time.Time `json:"updatedAt"`
 }
 
+type PublicStoreInfoResponse struct {
+	StoreName string `json:"storeName"`
+}
+
 func ToStoreConfigurationResponse(s *entity.StoreConfiguration) StoreConfigurationResponse {
 	resp := StoreConfigurationResponse{
 		ID:                        s.ID,

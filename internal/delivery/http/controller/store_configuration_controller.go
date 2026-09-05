@@ -34,6 +34,16 @@ func (c *StoreConfigurationController) Get(ctx *gin.Context) {
 	utils.SuccessResponse(ctx, http.StatusOK, "store configuration fetched successfully", res)
 }
 
+func (c *StoreConfigurationController) GetPublicStoreInfo(ctx *gin.Context) {
+	res, err := c.storeConfigurationUsecase.GetPublicStoreInfo(ctx.Request.Context())
+	if err != nil {
+		handleError(ctx, err)
+		return
+	}
+
+	utils.SuccessResponse(ctx, http.StatusOK, "store info fetched successfully", res)
+}
+
 func (c *StoreConfigurationController) Update(ctx *gin.Context) {
 	var req model.UpdateStoreConfigurationRequest
 	if err := ctx.ShouldBindBodyWithJSON(&req); err != nil {
