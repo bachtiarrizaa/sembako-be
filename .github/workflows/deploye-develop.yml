@@ -1,0 +1,54 @@
+name: Deploy to Development
+
+on:
+  push:
+    branches:
+      - develop
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Verify dependencies
+        run: go mod tidy && go mod verify
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Build
+        run: go build ./cmd/api/main.go
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup SSH Key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.DEV_DEPLOY_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H ${{ secrets.DEV_DEPLOY_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Deploy to Development
+        run: |
+          ssh -i ~/.ssh/deploy_key ${{ secrets.DEV_DEPLOY_USER }}@${{ secrets.DEV_DEPLOY_HOST }} << 'EOF'
+            set -e
+            echo "Deploying sembako-be (develop)..."
+            cd ~/sembako-be
+            git checkout develop
+            git pull origin develop
+            docker compose up -d --build
+            docker compose exec app make migrate-up
+            echo "Development deployed successfully"
+          EOF
