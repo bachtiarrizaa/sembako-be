@@ -22,7 +22,7 @@ func SeedPermissions(db *gorm.DB) error {
 		{ID: "60000000-0000-0000-0000-000000000000", Name: "discounts", Description: "Promosi & Diskon", Type: "menu", Path: ptrString("/discounts")},
 		{ID: "70000000-0000-0000-0000-000000000000", Name: "inventory", Description: "Stok & Opname", Type: "menu", Path: ptrString("/inventory")},
 		{ID: "80000000-0000-0000-0000-000000000000", Name: "suppliers-purchases", Description: "Pengadaan", Type: "menu", Path: ptrString("/suppliers-purchases")},
-		{ID: "90000000-0000-0000-0000-000000000000", Name: "customers-loyalty", Description: "Pelanggan & Poin", Type: "menu", Path: ptrString("/customers-loyalty")},
+		{ID: "90000000-0000-0000-0000-000000000000", Name: "customers-loyalty", Description: "Pelanggan", Type: "menu", Path: ptrString("/customers-loyalty")},
 		{ID: "a0000000-0000-0000-0000-000000000000", Name: "reports", Description: "Laporan", Type: "menu", Path: ptrString("/reports")},
 		{ID: "b0000000-0000-0000-0000-000000000000", Name: "employees", Description: "Pegawai & Akun", Type: "menu", Path: ptrString("/employees")},
 		{ID: "c0000000-0000-0000-0000-000000000000", Name: "settings:read", Description: "Pengaturan", Type: "menu", Path: ptrString("/settings")},
@@ -34,9 +34,7 @@ func SeedPermissions(db *gorm.DB) error {
 		{ID: "51000000-0000-0000-0000-000000000000", Name: "products:read", Description: "Daftar Produk", ParentID: ptrString("50000000-0000-0000-0000-000000000000"), Type: "menu", Path: ptrString("/products/list")},
 		{ID: "52000000-0000-0000-0000-000000000000", Name: "units:read", Description: "Satuan", ParentID: ptrString("50000000-0000-0000-0000-000000000000"), Type: "menu", Path: ptrString("/products/units")},
 		{ID: "53000000-0000-0000-0000-000000000000", Name: "categories:read", Description: "Kategori", ParentID: ptrString("50000000-0000-0000-0000-000000000000"), Type: "menu", Path: ptrString("/products/categories")},
-		// Discounts
-		{ID: "61000000-0000-0000-0000-000000000000", Name: "discounts:read", Description: "Daftar Diskon", ParentID: ptrString("60000000-0000-0000-0000-000000000000"), Type: "menu", Path: ptrString("/discounts")},
-		{ID: "62000000-0000-0000-0000-000000000000", Name: "product-discounts:read", Description: "Diskon per Produk", ParentID: ptrString("60000000-0000-0000-0000-000000000000"), Type: "menu", Path: ptrString("/discounts/products")},
+
 		// Inventory
 		{ID: "71000000-0000-0000-0000-000000000000", Name: "stocks:read", Description: "Mutasi Stok", ParentID: ptrString("70000000-0000-0000-0000-000000000000"), Type: "menu", Path: ptrString("/inventory/stock")},
 		{ID: "72000000-0000-0000-0000-000000000000", Name: "opname:approve", Description: "Persetujuan Opname", ParentID: ptrString("70000000-0000-0000-0000-000000000000"), Type: "menu", Path: ptrString("/inventory/opname")},
@@ -45,8 +43,7 @@ func SeedPermissions(db *gorm.DB) error {
 		{ID: "82000000-0000-0000-0000-000000000000", Name: "purchases:read", Description: "Pembelian", ParentID: ptrString("80000000-0000-0000-0000-000000000000"), Type: "menu", Path: ptrString("/purchases")},
 		// Customers & Loyalty
 		{ID: "91000000-0000-0000-0000-000000000000", Name: "customers:read", Description: "Pelanggan", ParentID: ptrString("90000000-0000-0000-0000-000000000000"), Type: "menu", Path: ptrString("/customers")},
-		{ID: "92000000-0000-0000-0000-000000000000", Name: "loyalty:write", Description: "Pengaturan Poin (Ubah)", ParentID: ptrString("90000000-0000-0000-0000-000000000000"), Type: "menu", Path: ptrString("/loyalty-settings")},
-		{ID: "93000000-0000-0000-0000-000000000000", Name: "loyalty:read", Description: "Pengaturan Poin (Lihat)", ParentID: ptrString("90000000-0000-0000-0000-000000000000"), Type: "menu", Path: ptrString("/loyalty-settings")},
+		{ID: "92000000-0000-0000-0000-000000000000", Name: "loyalty:read", Description: "Pengaturan Poin", ParentID: ptrString("c0000000-0000-0000-0000-000000000000"), Type: "menu", Path: ptrString("/loyalty-settings")},
 		// Reports
 		{ID: "a1000000-0000-0000-0000-000000000000", Name: "reports:read", Description: "Semua Laporan", ParentID: ptrString("a0000000-0000-0000-0000-000000000000"), Type: "menu", Path: ptrString("/reports")},
 		// Employees
@@ -76,14 +73,11 @@ func SeedPermissions(db *gorm.DB) error {
 		{Name: "categories:update", Description: "Mengubah data kategori", ParentID: ptrString("53000000-0000-0000-0000-000000000000"), Type: "action"},
 		{Name: "categories:delete", Description: "Menghapus kategori", ParentID: ptrString("53000000-0000-0000-0000-000000000000"), Type: "action"},
 
-		// Under Discounts sub-menu (Level 2: 61000000-...)
+		// Under Discounts menu (Level 1: 60000000-...)
+		{ID: "61000000-0000-0000-0000-000000000000", Name: "discounts:read", Description: "Daftar Diskon", ParentID: ptrString("60000000-0000-0000-0000-000000000000"), Type: "action", Path: ptrString("/discounts")},
 		{Name: "discounts:create", Description: "Membuat template diskon baru", ParentID: ptrString("61000000-0000-0000-0000-000000000000"), Type: "action"},
 		{Name: "discounts:update", Description: "Mengubah data diskon", ParentID: ptrString("61000000-0000-0000-0000-000000000000"), Type: "action"},
 		{Name: "discounts:delete", Description: "Menghapus diskon", ParentID: ptrString("61000000-0000-0000-0000-000000000000"), Type: "action"},
-		// Under Product Discounts sub-menu (Level 2: 62000000-...)
-		{Name: "product-discounts:create", Description: "Menghubungkan diskon ke produk", ParentID: ptrString("62000000-0000-0000-0000-000000000000"), Type: "action"},
-		{Name: "product-discounts:update", Description: "Mengubah pengaturan diskon produk", ParentID: ptrString("62000000-0000-0000-0000-000000000000"), Type: "action"},
-		{Name: "product-discounts:delete", Description: "Mencabut diskon dari produk", ParentID: ptrString("62000000-0000-0000-0000-000000000000"), Type: "action"},
 
 		// Under Inventory Stok sub-menu (Level 2: 71000000-...)
 		{Name: "stocks:create", Description: "Menambah penyesuaian stok manual", ParentID: ptrString("71000000-0000-0000-0000-000000000000"), Type: "action"},
@@ -106,6 +100,8 @@ func SeedPermissions(db *gorm.DB) error {
 		{Name: "customers:create", Description: "Membuat customer baru", ParentID: ptrString("91000000-0000-0000-0000-000000000000"), Type: "action"},
 		{Name: "customers:update", Description: "Mengubah data customer", ParentID: ptrString("91000000-0000-0000-0000-000000000000"), Type: "action"},
 		{Name: "customers:delete", Description: "Menghapus customer", ParentID: ptrString("91000000-0000-0000-0000-000000000000"), Type: "action"},
+		// Under Loyalty sub-menu (Level 2: 92000000-...)
+		{Name: "loyalty:write", Description: "Mengubah pengaturan poin", ParentID: ptrString("92000000-0000-0000-0000-000000000000"), Type: "action"},
 
 		// Under Employees sub-menu (Level 2: b1000000-...)
 		{Name: "users:create", Description: "Mengundang pegawai baru", ParentID: ptrString("b1000000-0000-0000-0000-000000000000"), Type: "action"},
