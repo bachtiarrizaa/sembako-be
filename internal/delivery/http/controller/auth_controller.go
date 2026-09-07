@@ -20,12 +20,13 @@ type AuthController struct {
 	passwordResetUsecase *usecase.PasswordResetUsecase
 	validator            *validator.Validate
 	refreshTokenTTL      time.Duration
+	secureCookie         bool
 }
 
 func NewAuthController(
 	authUsecase *usecase.AuthUsecase,
 	passwordResetUsecase *usecase.PasswordResetUsecase,
-	_ bool,
+	secureCookie bool,
 	refreshTokenTTL time.Duration,
 ) *AuthController {
 	return &AuthController{
@@ -33,6 +34,7 @@ func NewAuthController(
 		passwordResetUsecase: passwordResetUsecase,
 		validator:            validator.New(),
 		refreshTokenTTL:      refreshTokenTTL,
+		secureCookie:         secureCookie,
 	}
 }
 
@@ -143,7 +145,7 @@ func (ctrl *AuthController) setRefreshCookie(c *gin.Context, rawToken string) {
 		maxAge,
 		"/api/auth",
 		"",
-		true,
+		ctrl.secureCookie,
 		true,
 	)
 }
@@ -156,7 +158,7 @@ func (ctrl *AuthController) clearRefreshCookie(c *gin.Context) {
 		-1,
 		"/api/auth",
 		"",
-		true,
+		ctrl.secureCookie,
 		true,
 	)
 }
