@@ -34,9 +34,11 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Setup SSH Key
+        env:
+          SSH_KEY: ${{ secrets.DEV_DEPLOY_SSH_KEY }}
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.DEV_DEPLOY_SSH_KEY }}" > ~/.ssh/deploy_key
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -H ${{ secrets.DEV_DEPLOY_HOST }} >> ~/.ssh/known_hosts
 
