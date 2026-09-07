@@ -12,8 +12,10 @@ dev:
 tidy:
 	go mod tidy
 
+name ?= $(or $(target),all)
+
 seed:
-	go run cmd/seeder/main.go
+	go run cmd/seeder/main.go -name=$(name)
 
 migrate-up:
 	migrate -path migrations -database "$(MIGRATE_DSN)" up
