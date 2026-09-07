@@ -169,6 +169,7 @@ func TestLoyaltySetting_API(t *testing.T) {
 		nil, nil, nil, nil, nil, nil,
 		loyaltyController,
 		nil,
+		nil,
 	)
 
 	// Test 1: GET /api/loyalty-settings (200 OK)

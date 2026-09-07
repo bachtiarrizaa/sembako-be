@@ -15,6 +15,8 @@ func registerStoreConfigurationRoutes(
 	jwtSecret string,
 	blacklistRepo repository.BlacklistRepository,
 ) {
+	router.GET("/store-info", controller.GetPublicStoreInfo)
+
 	storeConfiguration := router.Group("/settings", middleware.AuthMiddleware(jwtSecret, blacklistRepo))
 	{
 		storeConfiguration.GET("", middleware.RequirePermission(permissionUsecase, "settings:read"), controller.Get)
