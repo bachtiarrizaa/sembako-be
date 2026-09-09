@@ -42,9 +42,11 @@ func SeedByName(db *gorm.DB, name string) error {
 		return SeedLoyaltySetting(db)
 	case "demo":
 		return SeedDemoData(db)
+	case "transactions":
+		return SeedTransactions(db)
 	case "all":
 		return SeedAll(db)
 	default:
-		return fmt.Errorf("unknown seeder target '%s'. Available targets: all, roles, permissions, users, store-config, loyalty, demo", name)
+		return fmt.Errorf("unknown seeder target '%s'. Available targets: all, roles, permissions, users, store-config, loyalty, demo, transactions", name)
 	}
 }
