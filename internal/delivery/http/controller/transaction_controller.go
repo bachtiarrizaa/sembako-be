@@ -75,18 +75,19 @@ func (c *TransactionController) ListTransactions(ctx *gin.Context) {
 		return
 	}
 
+	pageReq, err := utils.ParsePaginationQuery(ctx)
+	if err != nil {
+		utils.ErrorResponse(ctx, http.StatusBadRequest, "invalid query params")
+		return
+	}
+
 	var req model.ListTransactionsRequest
 	if err := ctx.ShouldBindQuery(&req); err != nil {
 		utils.ErrorResponse(ctx, http.StatusBadRequest, "invalid query params")
 		return
 	}
 
-	if req.Page <= 0 {
-		req.Page = 1
-	}
-	if req.Limit <= 0 {
-		req.Limit = 10
-	}
+	req.PaginationRequest = pageReq
 
 	res, pagination, err := c.usecase.ListTransactions(ctx.Request.Context(), req, userID.String(), role)
 	if err != nil {
@@ -127,4 +128,28 @@ func (c *TransactionController) VoidTransaction(ctx *gin.Context) {
 	}
 
 	utils.SuccessResponse(ctx, http.StatusOK, "transaction voided successfully", res)
+}
+
+func (c *TransactionController) ExportExcel(ctx *gin.Context) {
+	userID, role, ok := utils.GetUserAndRole(ctx)
+	if !ok {
+		return
+	}
+
+	var req model.ListTransactionsRequest
+	if err := ctx.ShouldBindQuery(&req); err != nil {
+		utils.ErrorResponse(ctx, http.StatusBadRequest, "invalid query params")
+		return
+	}
+
+	excelBytes, err := c.usecase.ExportTransactionsToExcel(ctx.Request.Context(), req, userID.String(), role)
+	if err != nil {
+		utils.HandleError(ctx, err)
+		return
+	}
+
+	fileName := "Laporan_Transaksi.xlsx"
+	ctx.Header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+	ctx.Header("Content-Disposition", "attachment; filename="+fileName)
+	ctx.Data(http.StatusOK, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", excelBytes)
 }

@@ -13,6 +13,7 @@ type TransactionRepository interface {
 	Update(ctx context.Context, transaction *entity.Transaction) error
 	FindByID(ctx context.Context, id string) (*entity.Transaction, error)
 	FindTransactions(ctx context.Context, req model.ListTransactionsRequest, restrictToCashierID *string) ([]entity.Transaction, int64, error)
+	FindTransactionsForExport(ctx context.Context, req model.ListTransactionsRequest, restrictToCashierID *string) ([]entity.Transaction, error)
 	GetTotalCashSalesByShift(ctx context.Context, shiftID string) (float64, error)
 	HasProductReferences(ctx context.Context, productID string) (bool, error)
 	HasUnitReferences(ctx context.Context, unitID string) (bool, error)
@@ -138,4 +139,45 @@ func (r *transactionRepositoryImpl) HasUnitReferences(ctx context.Context, unitI
 		return false, err
 	}
 	return count > 0, nil
+}
+
+func (r *transactionRepositoryImpl) FindTransactionsForExport(ctx context.Context, req model.ListTransactionsRequest, restrictToCashierID *string) ([]entity.Transaction, error) {
+	query := r.db.WithContext(ctx).
+		Model(&entity.Transaction{}).
+		Preload("Cashier").
+		Preload("Customer").
+		Preload("Items").
+		Preload("Items.ProductUnit").
+		Preload("Items.ProductUnit.Product").
+		Preload("Items.ProductUnit.Unit")
+
+	if restrictToCashierID != nil {
+		query = query.Where("cashier_id = ?", *restrictToCashierID)
+	} else if req.CashierID != nil && *req.CashierID != "" {
+		query = query.Where("cashier_id = ?", *req.CashierID)
+	}
+
+	if req.CustomerID != nil && *req.CustomerID != "" {
+		query = query.Where("customer_id = ?", *req.CustomerID)
+	}
+	if req.PaymentMethod != nil && *req.PaymentMethod != "" {
+		query = query.Where("payment_method = ?", *req.PaymentMethod)
+	}
+	if req.Status != nil && *req.Status != "" {
+		query = query.Where("status = ?", *req.Status)
+	}
+	if req.StartDate != nil && *req.StartDate != "" {
+		query = query.Where("created_at >= ?", *req.StartDate)
+	}
+	if req.EndDate != nil && *req.EndDate != "" {
+		query = query.Where("created_at <= ?", *req.EndDate)
+	}
+
+	var transactions []entity.Transaction
+	err := query.Order("created_at DESC").Find(&transactions).Error
+	if err != nil {
+		return nil, err
+	}
+
+	return transactions, nil
 }

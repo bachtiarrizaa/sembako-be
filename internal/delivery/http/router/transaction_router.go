@@ -19,6 +19,7 @@ func registerTransactionRoutes(
 	{
 		transaction.POST("", middleware.RequirePermission(permissionUsecase, "pos:create"), controller.CreateTransaction)
 		transaction.GET("", middleware.RequirePermission(permissionUsecase, "transactions:read"), controller.ListTransactions)
+		transaction.GET("/export", middleware.RequirePermission(permissionUsecase, "transactions:read"), controller.ExportExcel)
 		transaction.GET("/:id", middleware.RequirePermission(permissionUsecase, "transactions:read"), controller.GetTransactionByID)
 		transaction.POST("/:id/void", middleware.RequirePermission(permissionUsecase, "transactions:void"), controller.VoidTransaction)
 	}

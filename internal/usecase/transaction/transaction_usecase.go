@@ -15,6 +15,7 @@ type TransactionUsecase interface {
 	CreateTransaction(ctx context.Context, cashierID string, req model.CreateTransactionRequest) (*model.TransactionResponse, error)
 	GetTransactionByID(ctx context.Context, id string, cashierID string, role string) (*model.TransactionResponse, error)
 	ListTransactions(ctx context.Context, req model.ListTransactionsRequest, cashierID string, role string) ([]model.TransactionResponse, utils.Pagination, error)
+	ExportTransactionsToExcel(ctx context.Context, req model.ListTransactionsRequest, cashierID string, role string) ([]byte, error)
 	VoidTransaction(ctx context.Context, id string, cashierID string, req model.VoidTransactionRequest) (*model.TransactionResponse, error)
 }
 

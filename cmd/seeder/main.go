@@ -9,7 +9,7 @@ import (
 )
 
 func main() {
-	name := flag.String("name", "", "Specify seeder name (all, roles, permissions, users, store-config, loyalty, demo)")
+	name := flag.String("name", "", "Specify seeder name (all, roles, permissions, users, store-config, loyalty, demo, transactions)")
 	target := flag.String("target", "", "Alias for -name")
 	flag.Parse()
 
