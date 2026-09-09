@@ -1,0 +1,17 @@
+# Version control
+.git/
+.gitignore
+.github/
+
+# Go build cache and binaries
+bin/
+tmp/
+*.out
+
+# Uploads and static files (handled by volumes)
+uploads/
+
+# IDE and environment
+.idea/
+.vscode/
+.env
