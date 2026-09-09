@@ -48,7 +48,7 @@ jobs:
           ssh ${{ secrets.DEV_DEPLOY_USER }}@${{ secrets.DEV_DEPLOY_HOST }} << 'EOF'
             set -e
             echo "Deploying sembako-be (develop)..."
-            cd ~/sembako/sembako-be
+            cd ~/sembako/sembako-be-dev
             git checkout develop
             git pull origin develop
             docker compose up -d --build
