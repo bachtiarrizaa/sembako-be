@@ -59,7 +59,6 @@ func (r *productDiscountRepositoryImpl) FindByID(ctx context.Context, id string)
 	if err := r.db.WithContext(ctx).
 		Preload("Product.Category").
 		Preload("Product.Units.Unit").
-		Preload("Product").
 		Preload("Discount").
 		First(&productDiscount, "id = ?", id).Error; err != nil {
 		return nil, err
@@ -75,7 +74,6 @@ func (r *productDiscountRepositoryImpl) FindProductDiscounts(ctx context.Context
 		Model(&entity.ProductDiscount{}).
 		Preload("Product.Category").
 		Preload("Product.Units.Unit").
-		Preload("Product").
 		Preload("Discount")
 
 	if req.DiscountID != "" {

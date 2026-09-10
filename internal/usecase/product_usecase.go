@@ -205,10 +205,15 @@ func (u *ProductUsecase) UpdateProduct(ctx context.Context, id string, req model
 		}
 
 		product.CategoryID = req.CategoryID
+		product.Category = entity.Category{}
 		product.Name = req.Name
 		product.MinimumStock = req.MinimumStock
 		product.MarginThresholdPercent = req.MarginThresholdPercent
 		product.BaseUnitID = baseUnitID
+		product.BaseUnit = entity.Unit{}
+		product.Units = nil
+		product.Stock = nil
+		product.ProductDiscounts = nil
 
 		if err := productRepoTx.Update(ctx, product); err != nil {
 			return err
